@@ -7,4 +7,5 @@
   <Folder Name="/tests/">
     <Project Path="tests/EquipmentBorrowing.Tests/EquipmentBorrowing.Tests.csproj" />
   </Folder>
+  <Project Path="EquipmentBorrowing.ConsoleDemo/EquipmentBorrowing.ConsoleDemo.csproj" Id="7c4f4cae-18b2-4f2b-82ca-93ef07dd1eda" />
 </Solution>
