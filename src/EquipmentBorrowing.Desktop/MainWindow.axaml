@@ -6,14 +6,14 @@
         Title="Campus Equipment Borrowing System"
         Width="900" Height="600">
 
-    <Window.Resources>
+    <Window.DataTemplates>
         <DataTemplate DataType="vm:EquipmentViewModel">
             <views:EquipmentView />
         </DataTemplate>
         <DataTemplate DataType="vm:BorrowingsViewModel">
             <views:BorrowingsView />
         </DataTemplate>
-    </Window.Resources>
+    </Window.DataTemplates>
 
     <Grid ColumnDefinitions="180,*">
         <StackPanel Grid.Column="0" Classes="NavPanel">
