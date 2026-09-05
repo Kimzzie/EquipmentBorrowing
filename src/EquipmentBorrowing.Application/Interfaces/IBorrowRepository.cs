@@ -11,4 +11,8 @@ public interface IBorrowingRepository
     Task<Borrowing?> GetActiveByEquipmentIdAsync(int equipmentId, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Borrowing borrowing, CancellationToken cancellationToken = default);
+    Task<Borrowing?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Borrowing>> GetActiveAsync(CancellationToken cancellationToken = default);
+
 }

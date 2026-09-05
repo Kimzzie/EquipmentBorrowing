@@ -32,4 +32,19 @@ public class InMemoryBorrowingRepository : IBorrowingRepository
         // This method exists to satisfy the interface for future real implementations.
         return Task.CompletedTask;
     }
+
+    public Task<Borrowing?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var borrowing = _borrowings.FirstOrDefault(b => b.Id == id);
+        return Task.FromResult(borrowing);
+    }
+
+    public Task<IReadOnlyList<Borrowing>> GetActiveAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<Borrowing> active = _borrowings
+            .Where(b => b.Status == BorrowingStatus.Active)
+            .ToList();
+        return Task.FromResult(active);
+    }
+
 }

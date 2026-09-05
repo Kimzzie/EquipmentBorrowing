@@ -22,4 +22,10 @@ public class InMemoryEquipmentRepository : IEquipmentRepository
         IReadOnlyList<Equipment> available = _equipment.Where(e => e.IsAvailable).ToList();
         return Task.FromResult(available);
     }
+    public Task<IReadOnlyList<Equipment>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<Equipment> all = _equipment.ToList();
+        return Task.FromResult(all);
+    }
+
 }
