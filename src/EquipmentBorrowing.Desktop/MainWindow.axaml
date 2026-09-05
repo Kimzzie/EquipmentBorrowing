@@ -1,9 +1,29 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:vm="clr-namespace:EquipmentBorrowing.Desktop.ViewModels"
+        xmlns:views="clr-namespace:EquipmentBorrowing.Desktop.Views"
         x:Class="EquipmentBorrowing.Desktop.MainWindow"
-        Title="EquipmentBorrowing.Desktop">
-    Welcome to Avalonia!
+        Title="Campus Equipment Borrowing System"
+        Width="900" Height="600">
+
+    <Window.Resources>
+        <DataTemplate DataType="vm:EquipmentViewModel">
+            <views:EquipmentView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:BorrowingsViewModel">
+            <views:BorrowingsView />
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid ColumnDefinitions="180,*">
+        <StackPanel Grid.Column="0" Classes="NavPanel">
+            <TextBlock Text="Campus Equipment" Classes="Heading" Margin="12,16,12,20"/>
+            <Button Content="Equipment" Classes="NavButton" Command="{Binding ShowEquipmentCommand}"/>
+            <Button Content="Active Borrowings" Classes="NavButton" Command="{Binding ShowBorrowingsCommand}"/>
+        </StackPanel>
+
+        <Border Grid.Column="1" Padding="0">
+            <ContentControl Content="{Binding CurrentViewModel}"/>
+        </Border>
+    </Grid>
 </Window>
