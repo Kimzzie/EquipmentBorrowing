@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="EquipmentBorrowing.Desktop.Views.EquipmentView">
+
+    <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="20">
+        <TextBlock Grid.Row="0" Text="Equipment" Classes="Heading"/>
+
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding EquipmentList}"
+                 SelectedItem="{Binding SelectedEquipment}"
+                 Margin="0,12">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnDefinitions="40,*,2*,90" Margin="4">
+                        <TextBlock Grid.Column="0" Text="{Binding Id}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Description}" Foreground="Gray"/>
+                        <TextBlock Grid.Column="3" Text="{Binding IsAvailable}"/>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,*,Auto" Margin="0,0,0,8">
+            <StackPanel Grid.Column="0" Classes="FormField" Margin="0,0,12,0">
+                <TextBlock Text="Student" Classes="Label"/>
+                <ComboBox ItemsSource="{Binding Students}"
+                          SelectedItem="{Binding SelectedStudent}"
+                          HorizontalAlignment="Stretch">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Classes="FormField" Margin="0,0,12,0">
+                <TextBlock Text="Return Date" Classes="Label"/>
+                <DatePicker SelectedDate="{Binding ExpectedReturnDate, Mode=TwoWay}"/>
+            </StackPanel>
+
+            <Button Grid.Column="2"
+                    Content="Borrow Equipment"
+                    Classes="Primary"
+                    Command="{Binding BorrowCommand}"
+                    VerticalAlignment="Bottom"/>
+        </Grid>
+
+        <TextBlock Grid.Row="3"
+                   Text="{Binding StatusMessage}"
+                   Classes.ErrorMessage="{Binding IsError}"
+                   Classes.SuccessMessage="{Binding !IsError}"/>
+    </Grid>
+</UserControl>
