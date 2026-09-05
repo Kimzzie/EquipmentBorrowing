@@ -26,7 +26,8 @@
                 <TextBlock Text="Student" Classes="Label"/>
                 <ComboBox ItemsSource="{Binding Students}"
                           SelectedItem="{Binding SelectedStudent}"
-                          HorizontalAlignment="Stretch">
+                          Width="250"
+                          HorizontalAlignment="Left">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Name}"/>
@@ -37,7 +38,9 @@
 
             <StackPanel Grid.Column="1" Classes="FormField" Margin="0,0,12,0">
                 <TextBlock Text="Return Date" Classes="Label"/>
-                <DatePicker SelectedDate="{Binding ExpectedReturnDate, Mode=TwoWay}"/>
+                <DatePicker SelectedDate="{Binding ExpectedReturnDate, 
+                            Mode=TwoWay}"
+                            HorizontalAlignment="Left"/>
             </StackPanel>
 
             <Button Grid.Column="2"

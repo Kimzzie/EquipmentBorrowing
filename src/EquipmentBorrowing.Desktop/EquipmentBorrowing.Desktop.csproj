@@ -7,6 +7,12 @@
 	<AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
 	<ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+  <ItemGroup>
+    <AvaloniaXaml Remove="App.axaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="App.axaml" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.2" />
