@@ -17,7 +17,7 @@
 
     <Grid ColumnDefinitions="180,*">
         <StackPanel Grid.Column="0" Classes="NavPanel">
-            <TextBlock Text="Campus Equipment" Classes="Heading" Margin="12,16,12,20"/>
+            <TextBlock Text="Campus Equipment" Classes="SidebarTitle" Margin="12,16,12,20"/>
             <Button Content="Equipment" Classes="NavButton" Command="{Binding ShowEquipmentCommand}"/>
             <Button Content="Active Borrowings" Classes="NavButton" Command="{Binding ShowBorrowingsCommand}"/>
         </StackPanel>

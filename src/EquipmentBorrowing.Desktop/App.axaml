@@ -2,9 +2,62 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="EquipmentBorrowing.Desktop.App"
              RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             
 
     <Application.Styles>
         <FluentTheme />
+
+        <Style Selector="TextBlock.Heading">
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+
+        <Style Selector="TextBlock.Label">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="Gray"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+
+        <Style Selector="TextBlock.SidebarTitle">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+
+
+        <Style Selector="Button.Primary">
+            <Setter Property="Background" Value="#2F6FED"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+
+        <Style Selector="Button.NavButton">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Margin" Value="0,2"/>
+        </Style>
+
+        <Style Selector="StackPanel.NavPanel">
+            <Setter Property="Background" Value="#1E1E2E"/>
+        </Style>
+
+        <Style Selector="StackPanel.FormField">
+            <Setter Property="Spacing" Value="4"/>
+        </Style>
+
+        <Style Selector="TextBlock.ErrorMessage">
+            <Setter Property="Foreground" Value="#D64545"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style Selector="TextBlock.SuccessMessage">
+            <Setter Property="Foreground" Value="#2FA84F"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
     </Application.Styles>
 </Application>
