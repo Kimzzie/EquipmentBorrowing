@@ -59,3 +59,69 @@ No. A button's click handler should call an Application service method (like `Bo
 **5. What part of your implementation represents the actual business operation requested by the actor?**
 
 `BorrowEquipmentService.ExecuteAsync` is the business operation itself — it validates all the rules from Part A (student exists, is eligible, equipment exists and is available, max borrowings not exceeded) and only creates a `Borrowing` record if every rule passes. Everything else in the solution exists to support this one operation.
+
+
+
+---
+
+## Laboratory Activity 2 — Avalonia UI and MVVM
+
+### 1. Desktop Project
+
+`EquipmentBorrowing.Desktop` is the presentation layer added in Lab 2. It contains Avalonia Views (XAML), ViewModels (CommunityToolkit.Mvvm), and the application's composition root (`App.axaml.cs`). It references `Application` and `Infrastructure` to compose the dependency graph, but `Domain` and `Application` have zero references back to it or to Avalonia — the business rules built in Lab 1 didn't change at all.
+
+### 2. Updated Architecture
+
+```text
+Avalonia View (EquipmentView / BorrowingsView)
+      │
+      │ Binding / Command
+      ▼
+ViewModel (EquipmentViewModel / BorrowingsViewModel)
+      │
+      │ Application Operation
+      ▼
+Application Service (BorrowEquipmentService / ReturnEquipmentService)
+      │
+      ├──────────► Domain (Student, Equipment, Borrowing, BorrowingStatus)
+      │
+      ▼
+Repository Interface (IStudentRepository, IEquipmentRepository, IBorrowingRepository)
+      ▲
+      │
+Infrastructure Implementation (InMemoryStudentRepository, InMemoryEquipmentRepository, InMemoryBorrowingRepository)
+```
+
+### 3. Borrow Equipment Flow
+
+The user selects a student, equipment, and return date in `EquipmentView`, then clicks "Borrow Equipment," which triggers `EquipmentViewModel.BorrowCommand`. The ViewModel first runs presentation validation (are a student and equipment selected, is the date valid?). If that passes, it calls `BorrowEquipmentService.ExecuteAsync(...)`, which checks the actual business rules — student eligibility, equipment availability, and the active-borrowing limit — against the repositories. The result (`BorrowResult`) comes back to the ViewModel, which sets `StatusMessage` and reloads the equipment list so the UI reflects the new availability state.
+
+### 4. Return Equipment Flow
+
+The user selects an active borrowing in `BorrowingsView` and clicks "Return Equipment," triggering `BorrowingsViewModel.ReturnCommand`. The ViewModel calls `ReturnEquipmentService.ExecuteAsync(borrowingId)`, which looks up the borrowing, confirms it hasn't already been returned, marks the borrowing and its equipment as returned, and persists the change. The result comes back to the ViewModel, which updates `StatusMessage` and reloads the active borrowings list.
+
+### 5. Architectural Reflection
+
+**Why should the View not call a repository directly?**
+
+The View exists only to display data and forward user actions. If it called a repository directly, it would need to know about borrowing rules and data access details that have nothing to do with rendering XAML, and those rules would end up duplicated or bypassed outside the Application layer.
+
+**Why should business rules not be implemented in the ViewModel?**
+
+The ViewModel's job is to translate between the View and the Application layer — collecting input, holding presentation state, and reporting results. Putting rules like "equipment must be available" in the ViewModel would duplicate logic that already lives in `BorrowEquipmentService`/`ReturnEquipmentService`, and any future UI (or automated test) would have to reimplement it.
+
+**What is the responsibility of the ViewModel?**
+
+To hold presentation state (selected items, status messages, observable collections), expose commands the View can bind to, run lightweight presentation validation, and call the appropriate Application service — nothing more.
+
+**Why can the existing Application layer work without knowing that Avalonia is being used?**
+
+`BorrowEquipmentService` and `ReturnEquipmentService` depend only on repository interfaces and Domain types. They have no reference to Avalonia at all, so from their point of view, a button click and a console `Console.ReadLine()` call look identical — both are just a method call with some arguments.
+
+**What advantage is gained from registering dependencies in one composition point?**
+
+`App.axaml.cs` is the only place in the entire solution that knows the concrete implementations (`InMemoryStudentRepository`, etc.). Every other class only depends on interfaces. Changing an implementation, or swapping in test doubles, means editing one method instead of hunting through every ViewModel and service.
+
+**If the in-memory repository were replaced by SQLite later, which parts of the current interface should remain largely unchanged?**
+
+All of `Domain`, `Application` (interfaces and services), and essentially all of `Desktop` — the Views, ViewModels, and navigation logic — would stay the same. Only the three `InMemory*Repository` classes in `Infrastructure` would be replaced with EF Core-based equivalents, and the one line registering them in `App.axaml.cs` would change.
