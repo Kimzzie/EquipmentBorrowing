@@ -8,7 +8,8 @@ public class InMemoryEquipmentRepository : IEquipmentRepository
     private readonly List<Equipment> _equipment = new()
        {
            new Equipment(id: 1, name: "Crimping Tool", isAvailable: true),
-           new Equipment(id: 2, name: "LAN Tester", isAvailable: false)
+           new Equipment(id: 2, name: "LAN Tester", isAvailable: false),
+           new Equipment(id: 3, name: "Aircon Remote", isAvailable: true)
        };
 
     public Task<Equipment?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
