@@ -7,6 +7,7 @@ public class Borrowing
     public int EquipmentId { get; }
     public DateTime DateBorrowed { get; }
     public DateTime ExpectedReturnDate { get; }
+    public DateTime? DateReturned { get; private set; }
     public BorrowingStatus Status { get; private set; }
 
     public Borrowing(
@@ -30,5 +31,6 @@ public class Borrowing
             throw new InvalidOperationException("Borrowing is already marked as returned.");
 
         Status = BorrowingStatus.Returned;
+        DateReturned = DateTime.UtcNow;
     }
 }
