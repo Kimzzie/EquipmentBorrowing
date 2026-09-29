@@ -2,7 +2,7 @@
 
 public class Borrowing
 {
-    public int Id { get; }
+    public int Id { get; private set; }
     public int StudentId { get; }
     public int EquipmentId { get; }
     public DateTime DateBorrowed { get; }

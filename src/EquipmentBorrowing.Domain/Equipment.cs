@@ -2,7 +2,8 @@
 
 public class Equipment
 {
-    public int Id { get; }
+    public int Id { get; private set; }
+
     public string Name { get; }
     public string Type { get; }
     public string? Description { get; }

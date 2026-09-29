@@ -2,7 +2,8 @@
 
 public class Student
 {
-    public int Id { get; }
+    public int Id { get; private set; }
+
     public string StudentNumber { get; }
     public string Name { get; }
     public bool IsAllowedToBorrow { get; private set; }
