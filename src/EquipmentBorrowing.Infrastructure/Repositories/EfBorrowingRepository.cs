@@ -1,4 +1,5 @@
-﻿using EquipmentBorrowing.Application.Interfaces;
+﻿using EquipmentBorrowing.Application.Dtos;
+using EquipmentBorrowing.Application.Interfaces;
 using EquipmentBorrowing.Domain;
 using EquipmentBorrowing.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +17,6 @@ public class EfBorrowingRepository : IBorrowingRepository
 
     public async Task AddAsync(Borrowing borrowing, CancellationToken cancellationToken = default)
     {
-        // Only staged here — the actual INSERT happens on SaveChangesAsync.
         await _context.Borrowings.AddAsync(borrowing, cancellationToken);
     }
 
@@ -45,16 +45,25 @@ public class EfBorrowingRepository : IBorrowingRepository
 
     public async Task<Borrowing?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        // Tracked: ReturnEquipmentService mutates this via MarkAsReturned().
         return await _context.Borrowings
             .FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Borrowing>> GetActiveAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ActiveBorrowingSummary>> GetActiveWithDetailsAsync(CancellationToken cancellationToken = default)
     {
-        return await _context.Borrowings
-            .AsNoTracking()
-            .Where(b => b.Status == BorrowingStatus.Active)
+        // One query, two JOINs — replaces what used to be one query per
+        // borrowing plus a separate student lookup and equipment lookup.
+        return await (
+            from b in _context.Borrowings.AsNoTracking()
+            join s in _context.Students.AsNoTracking() on b.StudentId equals s.Id
+            join e in _context.Equipment.AsNoTracking() on b.EquipmentId equals e.Id
+            where b.Status == BorrowingStatus.Active
+            select new ActiveBorrowingSummary(
+                b.Id,
+                s.Name,
+                e.Name,
+                b.DateBorrowed,
+                b.ExpectedReturnDate))
             .ToListAsync(cancellationToken);
     }
 }

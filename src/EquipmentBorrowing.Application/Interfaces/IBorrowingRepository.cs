@@ -1,4 +1,5 @@
-﻿using EquipmentBorrowing.Domain;
+﻿using EquipmentBorrowing.Application.Dtos;
+using EquipmentBorrowing.Domain;
 
 namespace EquipmentBorrowing.Application.Interfaces;
 
@@ -13,6 +14,5 @@ public interface IBorrowingRepository
     Task UpdateAsync(Borrowing borrowing, CancellationToken cancellationToken = default);
     Task<Borrowing?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<Borrowing>> GetActiveAsync(CancellationToken cancellationToken = default);
-
+    Task<IReadOnlyList<ActiveBorrowingSummary>> GetActiveWithDetailsAsync(CancellationToken cancellationToken = default);
 }

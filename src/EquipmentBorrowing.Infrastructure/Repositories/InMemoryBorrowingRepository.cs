@@ -1,4 +1,5 @@
-﻿using EquipmentBorrowing.Application.Interfaces;
+﻿using EquipmentBorrowing.Application.Dtos;
+using EquipmentBorrowing.Application.Interfaces;
 using EquipmentBorrowing.Domain;
 
 namespace EquipmentBorrowing.Infrastructure.Repositories;
@@ -6,6 +7,16 @@ namespace EquipmentBorrowing.Infrastructure.Repositories;
 public class InMemoryBorrowingRepository : IBorrowingRepository
 {
     private readonly List<Borrowing> _borrowings = new();
+    private readonly IStudentRepository _studentRepository;
+    private readonly IEquipmentRepository _equipmentRepository;
+
+    public InMemoryBorrowingRepository(
+        IStudentRepository studentRepository,
+        IEquipmentRepository equipmentRepository)
+    {
+        _studentRepository = studentRepository;
+        _equipmentRepository = equipmentRepository;
+    }
 
     public Task AddAsync(Borrowing borrowing, CancellationToken cancellationToken = default)
     {
@@ -27,9 +38,6 @@ public class InMemoryBorrowingRepository : IBorrowingRepository
 
     public Task UpdateAsync(Borrowing borrowing, CancellationToken cancellationToken = default)
     {
-        // In-memory storage keeps a reference to the same object, so status
-        // changes made via borrowing.MarkAsReturned() are already reflected.
-        // This method exists to satisfy the interface for future real implementations.
         return Task.CompletedTask;
     }
 
@@ -39,12 +47,23 @@ public class InMemoryBorrowingRepository : IBorrowingRepository
         return Task.FromResult(borrowing);
     }
 
-    public Task<IReadOnlyList<Borrowing>> GetActiveAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ActiveBorrowingSummary>> GetActiveWithDetailsAsync(CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<Borrowing> active = _borrowings
-            .Where(b => b.Status == BorrowingStatus.Active)
-            .ToList();
-        return Task.FromResult(active);
-    }
+        var summaries = new List<ActiveBorrowingSummary>();
 
+        foreach (var borrowing in _borrowings.Where(b => b.Status == BorrowingStatus.Active))
+        {
+            var student = await _studentRepository.GetByIdAsync(borrowing.StudentId, cancellationToken);
+            var equipment = await _equipmentRepository.GetByIdAsync(borrowing.EquipmentId, cancellationToken);
+
+            summaries.Add(new ActiveBorrowingSummary(
+                borrowing.Id,
+                student?.Name ?? "Unknown student",
+                equipment?.Name ?? "Unknown equipment",
+                borrowing.DateBorrowed,
+                borrowing.ExpectedReturnDate));
+        }
+
+        return summaries;
+    }
 }
