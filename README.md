@@ -125,3 +125,134 @@ To hold presentation state (selected items, status messages, observable collecti
 **If the in-memory repository were replaced by SQLite later, which parts of the current interface should remain largely unchanged?**
 
 All of `Domain`, `Application` (interfaces and services), and essentially all of `Desktop` — the Views, ViewModels, and navigation logic — would stay the same. Only the three `InMemory*Repository` classes in `Infrastructure` would be replaced with EF Core-based equivalents, and the one line registering them in `App.axaml.cs` would change.
+
+
+
+
+
+---
+
+## Laboratory Activity 3 — From In-Memory Data to Persistent Storage
+
+### 1. Relational Database Design
+
+The schema has 3 tables — see `docs/database-diagram.png` for the full ER diagram.
+
+- **Students**: `Id` (PK), `StudentNumber` (unique), `Name`, `IsAllowedToBorrow`
+- **Equipment**: `Id` (PK), `Name`, `Type`, `Description` (nullable), `IsAvailable`
+- **Borrowings**: `Id` (PK), `StudentId` (FK → Students), `EquipmentId` (FK → Equipment), `DateBorrowed`, `ExpectedReturnDate`, `DateReturned` (nullable), `Status`
+
+Both foreign keys use `ON DELETE RESTRICT`, so a student or equipment record with borrowing history can't be deleted. A filtered unique index on `Borrowings.EquipmentId` (where `Status = 'Active'`) enforces "one active borrowing per item" at the database level, not just in application code.
+
+### 2. SQLite and EF Core
+
+Four NuGet packages were added to `EquipmentBorrowing.Infrastructure`: `Microsoft.EntityFrameworkCore`, `.Sqlite`, `.Design`, and `.Tools`. The `dotnet-ef` CLI tool was installed globally to generate and apply migrations. Since `EquipmentBorrowingDbContext` lives in Infrastructure (a class library with no startup/host project of its own), an `EquipmentBorrowingDbContextFactory` implementing `IDesignTimeDbContextFactory<T>` was added so `dotnet ef` commands can construct the context without needing `--project`/`--startup-project` flags.
+
+### 3. DbContext
+
+`EquipmentBorrowingDbContext` is the single point of contact between the application and SQLite. It exposes one `DbSet<T>` per entity (`Students`, `Equipment`, `Borrowings`) and applies every `IEntityTypeConfiguration<T>` in the assembly automatically via `ApplyConfigurationsFromAssembly`, so adding a new entity configuration never requires editing the context itself.
+
+### 4. Repository Transition
+
+Before:
+```text
+IEquipmentRepository → InMemoryEquipmentRepository (List<Equipment>)
+```
+
+After:
+```text
+IEquipmentRepository → EfEquipmentRepository → EquipmentBorrowingDbContext → SQLite
+```
+
+The interfaces stayed almost identical — `BorrowEquipmentService` and `ReturnEquipmentService` didn't change their dependencies at all. Two additions were needed: `IEquipmentRepository.UpdateAsync` (the in-memory version didn't need it, since mutating the shared object was enough — SQLite requires an explicit save), and a small `IUnitOfWork` interface, so the equipment update and the new borrowing record commit in one transaction instead of two independent ones.
+
+### 5. Migration Process
+
+```powershell
+cd src\EquipmentBorrowing.Infrastructure
+dotnet ef migrations add InitialCreate --output-dir Data/Migrations
+dotnet ef database update
+```
+
+The app also calls `context.Database.Migrate()` on every startup (in `App.axaml.cs`), so a fresh clone of this repository doesn't require the manual `dotnet ef` step — the database is created and brought up to date automatically the first time the app runs.
+
+### 6. Generated SQL
+
+**LINQ Query 1 (filter) — available equipment**
+```csharp
+await _context.Equipment.AsNoTracking().Where(e => e.IsAvailable).ToListAsync();
+```
+Generated SQL:
+```sql
+SELECT "e"."Id", "e"."Description", "e"."IsAvailable", "e"."Name", "e"."Type"
+FROM "Equipment" AS "e"
+WHERE "e"."IsAvailable"
+```
+Explanation: SQLite stores `bool` as an integer, but EF's generated `WHERE` clause treats it directly as truthy — no `= 1` needed.
+
+**LINQ Query 2 (join) — active borrowings with student and equipment names**
+```csharp
+from b in _context.Borrowings.AsNoTracking()
+join s in _context.Students.AsNoTracking() on b.StudentId equals s.Id
+join e in _context.Equipment.AsNoTracking() on b.EquipmentId equals e.Id
+where b.Status == BorrowingStatus.Active
+select new ActiveBorrowingSummary(b.Id, s.Name, e.Name, b.DateBorrowed, b.ExpectedReturnDate);
+```
+Generated SQL:
+```sql
+SELECT "b"."Id", "s"."Name", "e"."Name", "b"."DateBorrowed", "b"."ExpectedReturnDate"
+FROM "Borrowings" AS "b"
+INNER JOIN "Students" AS "s" ON "b"."StudentId" = "s"."Id"
+INNER JOIN "Equipment" AS "e" ON "b"."EquipmentId" = "e"."Id"
+WHERE "b"."Status" = 'Active'
+```
+Explanation: one round trip does what used to take a query per borrowing plus two lookups per row — a single `SELECT` with two `INNER JOIN`s.
+
+**LINQ Query 3 (aggregate, bonus) — active borrowing count for a student**
+```csharp
+await _context.Borrowings.AsNoTracking()
+    .CountAsync(b => b.StudentId == studentId && b.Status == BorrowingStatus.Active);
+```
+Generated SQL:
+```sql
+SELECT COUNT(*)
+FROM "Borrowings" AS "b"
+WHERE "b"."StudentId" = @studentId AND "b"."Status" = 'Active'
+```
+Explanation: `studentId` is passed as a parameter (`@studentId`), not concatenated into the query text — this is EF's default behavior and is what keeps LINQ queries safe from SQL injection.
+
+**Tracking decisions:** every list/filter query above uses `AsNoTracking()`, since the results are only ever displayed. `Equipment.GetByIdAsync` and `Borrowing.GetByIdAsync`, by contrast, stay tracked — both are called immediately before mutating the entity (`MarkAsBorrowed()`, `MarkAsReturned()`), so EF's change tracker needs to see the change to write it back on `SaveChangesAsync`.
+
+### 7. Persistence Demonstration
+
+We ran the full test from Part K: started the app, borrowed a piece of equipment, confirmed it appeared in the Borrowings tab, closed the application completely, reopened it, and confirmed the borrowing was still there. We then returned it, closed and reopened the app again, and confirmed the returned state was preserved and the equipment showed as available again.
+
+### 8. Architectural Reflection
+
+**1. Why did the application not need to be completely rewritten when SQLite was introduced?**
+
+Domain and Application never referenced any storage mechanism — only repository interfaces. Only Infrastructure (three new `Ef*Repository` classes) and the DI registrations in `App.axaml.cs` changed.
+
+**2. Why should the ViewModel not use `DbContext` directly?**
+
+`DbContext` exposes low-level persistence concerns — change tracking, raw table access, connection lifetime. A ViewModel's job is presentation state and calling application services; coupling it to `DbContext` would leak EF/SQL details into the UI layer and make the provider impossible to swap or test in isolation.
+
+**3. What responsibility does the repository implementation now perform?**
+
+It translates interface calls into real LINQ queries against `DbContext`, decides whether each query should track or not, and stages inserts/updates so `IUnitOfWork.SaveChangesAsync()` can commit them together.
+
+**4. What is the purpose of an EF Core migration?**
+
+A versioned, reproducible description of schema changes, generated from the C# model, so the database structure can be created and evolved consistently across machines without hand-written SQL DDL.
+
+**5. Why are foreign keys important in the borrowing database?**
+
+They enforce referential integrity at the database level — every `Borrowing.StudentId`/`EquipmentId` is guaranteed to point to a real row, and `ON DELETE RESTRICT` stops a student or equipment record from being deleted while borrowing history references it.
+
+**6. Why can a read-only query benefit from `AsNoTracking()`?**
+
+EF skips building change-tracking snapshots for the returned entities, which is faster and uses less memory, since there's no intention of ever calling `SaveChanges()` on that data.
+
+**7. What would happen to the rest of the application if the SQLite implementation were replaced later by another database provider?**
+
+Only Infrastructure would change — swap `UseSqlite` for the new provider's equivalent and adjust the connection string. Domain, Application, and Desktop would be completely unaffected, since none of them reference SQLite or EF Core directly.
