@@ -6,13 +6,16 @@ public class ReturnEquipmentService
 {
     private readonly IBorrowingRepository _borrowingRepository;
     private readonly IEquipmentRepository _equipmentRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
     public ReturnEquipmentService(
         IBorrowingRepository borrowingRepository,
-        IEquipmentRepository equipmentRepository)
+        IEquipmentRepository equipmentRepository,
+        IUnitOfWork unitOfWork)
     {
         _borrowingRepository = borrowingRepository;
         _equipmentRepository = equipmentRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<ReturnResult> ExecuteAsync(
@@ -34,6 +37,9 @@ public class ReturnEquipmentService
         equipment.MarkAsReturned();
 
         await _borrowingRepository.UpdateAsync(borrowing, cancellationToken);
+        await _equipmentRepository.UpdateAsync(equipment, cancellationToken);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ReturnResult.Success(borrowing);
     }

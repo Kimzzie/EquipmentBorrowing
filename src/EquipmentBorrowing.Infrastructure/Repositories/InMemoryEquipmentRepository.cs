@@ -29,4 +29,11 @@ public class InMemoryEquipmentRepository : IEquipmentRepository
         IReadOnlyList<Equipment> all = _equipment.ToList();
         return Task.FromResult(all);
     }
+
+    public Task UpdateAsync(Equipment equipment, CancellationToken cancellationToken = default)
+    {
+        // Same reasoning as InMemoryBorrowingRepository.UpdateAsync:
+        // the shared reference already reflects the change.
+        return Task.CompletedTask;
+    }
 }

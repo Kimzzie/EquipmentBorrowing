@@ -8,16 +8,19 @@ public class BorrowEquipmentService
     private readonly IStudentRepository _studentRepository;
     private readonly IEquipmentRepository _equipmentRepository;
     private readonly IBorrowingRepository _borrowingRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private const int MaxActiveBorrowings = 3;
 
     public BorrowEquipmentService(
         IStudentRepository studentRepository,
         IEquipmentRepository equipmentRepository,
-        IBorrowingRepository borrowingRepository)
+        IBorrowingRepository borrowingRepository,
+        IUnitOfWork unitOfWork)
     {
         _studentRepository = studentRepository;
         _equipmentRepository = equipmentRepository;
         _borrowingRepository = borrowingRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BorrowResult> ExecuteAsync(
@@ -47,13 +50,18 @@ public class BorrowEquipmentService
         equipment.MarkAsBorrowed();
 
         var borrowing = new Borrowing(
-            id: new Random().Next(1000, 9999), // temporary ID strategy for in-memory demo
+            id: 0, // the database generates the real ID on save
             studentId: studentId,
             equipmentId: equipmentId,
             dateBorrowed: DateTime.UtcNow,
             expectedReturnDate: expectedReturnDate);
 
+        await _equipmentRepository.UpdateAsync(equipment, cancellationToken);
         await _borrowingRepository.AddAsync(borrowing, cancellationToken);
+
+        // One save — the equipment update and the new borrowing commit
+        // together, or neither does.
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return BorrowResult.Success(borrowing);
     }

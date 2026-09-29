@@ -20,12 +20,13 @@ public partial class App : Avalonia.Application
     {
         var services = new ServiceCollection();
 
-        // Singletons: the lab uses in-memory storage, so the SAME instance
-        // must be reused everywhere, or a new borrowing would vanish the
-        // moment you switch views.
+        // Singletons: the app still uses in-memory storage for now, so the
+        // SAME instance must be reused everywhere, or a new borrowing
+        // would vanish the moment you switch views.
         services.AddSingleton<IStudentRepository, InMemoryStudentRepository>();
         services.AddSingleton<IEquipmentRepository, InMemoryEquipmentRepository>();
         services.AddSingleton<IBorrowingRepository, InMemoryBorrowingRepository>();
+        services.AddSingleton<IUnitOfWork, InMemoryUnitOfWork>();
 
         // Transient: cheap to build, no shared state to protect.
         services.AddTransient<BorrowEquipmentService>();

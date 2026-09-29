@@ -8,4 +8,6 @@ public interface IEquipmentRepository
 
     Task<IReadOnlyList<Equipment>> GetAvailableAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Equipment>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    Task UpdateAsync(Equipment equipment, CancellationToken cancellationToken = default);
 }

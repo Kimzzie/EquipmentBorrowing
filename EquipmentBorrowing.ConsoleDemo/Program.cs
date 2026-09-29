@@ -5,11 +5,13 @@ using EquipmentBorrowing.Infrastructure.Repositories;
 var studentRepository = new InMemoryStudentRepository();
 var equipmentRepository = new InMemoryEquipmentRepository();
 var borrowingRepository = new InMemoryBorrowingRepository();
+var unitOfWork = new InMemoryUnitOfWork();
 
 var borrowService = new BorrowEquipmentService(
     studentRepository,
     equipmentRepository,
-    borrowingRepository);
+    borrowingRepository,
+    unitOfWork);
 
 Console.WriteLine("=== Successful Case: Eligible student borrows available equipment ===");
 var successResult = await borrowService.ExecuteAsync(
@@ -56,4 +58,3 @@ if (!equipmentFailureResult.IsSuccess)
 {
     Console.WriteLine($"EXPECTED FAILURE: {equipmentFailureResult.ErrorMessage}");
 }
-
