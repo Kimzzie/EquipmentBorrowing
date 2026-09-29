@@ -4,7 +4,7 @@ using EquipmentBorrowing.Infrastructure.Repositories;
 // Manual dependency injection: create repositories, then inject into the service.
 var studentRepository = new InMemoryStudentRepository();
 var equipmentRepository = new InMemoryEquipmentRepository();
-var borrowingRepository = new InMemoryBorrowingRepository();
+var borrowingRepository = new InMemoryBorrowingRepository(studentRepository, equipmentRepository); ;
 var unitOfWork = new InMemoryUnitOfWork();
 
 var borrowService = new BorrowEquipmentService(
