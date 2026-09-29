@@ -3,14 +3,14 @@ using CommunityToolkit.Mvvm.Input;
 using EquipmentBorrowing.Application.Interfaces;
 using EquipmentBorrowing.Application.Services;
 using EquipmentBorrowing.Desktop.Models;
+using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
 public partial class BorrowingsViewModel : ObservableObject
 {
-    private readonly IBorrowingRepository _borrowingRepository;
-    private readonly ReturnEquipmentService _returnEquipmentService;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     [ObservableProperty]
     private ObservableCollection<BorrowingListItem> activeBorrowings = new();
@@ -25,18 +25,18 @@ public partial class BorrowingsViewModel : ObservableObject
     [ObservableProperty]
     private bool isError;
 
-    public BorrowingsViewModel(
-        IBorrowingRepository borrowingRepository,
-        ReturnEquipmentService returnEquipmentService)
+    public BorrowingsViewModel(IServiceScopeFactory scopeFactory)
     {
-        _borrowingRepository = borrowingRepository;
-        _returnEquipmentService = returnEquipmentService;
+        _scopeFactory = scopeFactory;
     }
 
     [RelayCommand]
     private async Task LoadAsync()
     {
-        var active = await _borrowingRepository.GetActiveWithDetailsAsync();
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var borrowingRepository = scope.ServiceProvider.GetRequiredService<IBorrowingRepository>();
+
+        var active = await borrowingRepository.GetActiveWithDetailsAsync();
 
         var items = active.Select(b => new BorrowingListItem
         {
@@ -62,7 +62,10 @@ public partial class BorrowingsViewModel : ObservableObject
             return;
         }
 
-        var result = await _returnEquipmentService.ExecuteAsync(SelectedBorrowing.Id);
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var returnEquipmentService = scope.ServiceProvider.GetRequiredService<ReturnEquipmentService>();
+
+        var result = await returnEquipmentService.ExecuteAsync(SelectedBorrowing.Id);
 
         if (result.IsSuccess)
         {

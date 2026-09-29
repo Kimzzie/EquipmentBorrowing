@@ -1,10 +1,11 @@
-using System;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using EquipmentBorrowing.Application.Interfaces;
 using EquipmentBorrowing.Application.Services;
 using EquipmentBorrowing.Desktop.ViewModels;
+using EquipmentBorrowing.Infrastructure.Data;
 using EquipmentBorrowing.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EquipmentBorrowing.Desktop;
@@ -20,22 +21,41 @@ public partial class App : Avalonia.Application
     {
         var services = new ServiceCollection();
 
-        // Singletons: the app still uses in-memory storage for now, so the
-        // SAME instance must be reused everywhere, or a new borrowing
-        // would vanish the moment you switch views.
-        services.AddSingleton<IStudentRepository, InMemoryStudentRepository>();
-        services.AddSingleton<IEquipmentRepository, InMemoryEquipmentRepository>();
-        services.AddSingleton<IBorrowingRepository, InMemoryBorrowingRepository>();
-        services.AddSingleton<IUnitOfWork, InMemoryUnitOfWork>();
+        // Scoped: one DbContext per operation. ViewModels create a new
+        // scope for every Load/Borrow/Return (see IServiceScopeFactory
+        // usage below), so all repositories used within ONE operation
+        // share the SAME context, and no operation reuses a stale one
+        // left over from an earlier click.
+        services.AddDbContext<EquipmentBorrowingDbContext>(options =>
+            options.UseSqlite(DatabasePathProvider.GetConnectionString()));
 
-        // Transient: cheap to build, no shared state to protect.
-        services.AddTransient<BorrowEquipmentService>();
-        services.AddTransient<ReturnEquipmentService>();
+        services.AddScoped<IStudentRepository, EfStudentRepository>();
+        services.AddScoped<IEquipmentRepository, EfEquipmentRepository>();
+        services.AddScoped<IBorrowingRepository, EfBorrowingRepository>();
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+
+        services.AddScoped<BorrowEquipmentService>();
+        services.AddScoped<ReturnEquipmentService>();
+
+        // ViewModels live for the whole app session, so they hold a scope
+        // factory instead of holding repositories/services directly —
+        // otherwise they'd capture one DbContext for the entire session,
+        // exactly the staleness problem this design avoids.
         services.AddTransient<EquipmentViewModel>();
         services.AddTransient<BorrowingsViewModel>();
         services.AddTransient<MainWindowViewModel>();
 
         var provider = services.BuildServiceProvider();
+
+        // Apply any pending migrations and seed starting data on launch,
+        // so a fresh clone of this repo doesn't need a manual `dotnet ef`
+        // step before the app can run.
+        using (var startupScope = provider.CreateScope())
+        {
+            var context = startupScope.ServiceProvider.GetRequiredService<EquipmentBorrowingDbContext>();
+            context.Database.Migrate();
+            DbSeeder.SeedAsync(context).GetAwaiter().GetResult();
+        }
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

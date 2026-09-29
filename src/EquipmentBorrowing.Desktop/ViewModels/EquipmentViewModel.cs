@@ -4,14 +4,13 @@ using CommunityToolkit.Mvvm.Input;
 using EquipmentBorrowing.Application.Interfaces;
 using EquipmentBorrowing.Application.Services;
 using EquipmentBorrowing.Domain;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
 public partial class EquipmentViewModel : ObservableObject
 {
-    private readonly IEquipmentRepository _equipmentRepository;
-    private readonly IStudentRepository _studentRepository;
-    private readonly BorrowEquipmentService _borrowEquipmentService;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     [ObservableProperty]
     private ObservableCollection<Equipment> equipmentList = new();
@@ -36,23 +35,24 @@ public partial class EquipmentViewModel : ObservableObject
     [ObservableProperty]
     private bool isError;
 
-    public EquipmentViewModel(
-        IEquipmentRepository equipmentRepository,
-        IStudentRepository studentRepository,
-        BorrowEquipmentService borrowEquipmentService)
+    public EquipmentViewModel(IServiceScopeFactory scopeFactory)
     {
-        _equipmentRepository = equipmentRepository;
-        _studentRepository = studentRepository;
-        _borrowEquipmentService = borrowEquipmentService;
+        _scopeFactory = scopeFactory;
     }
 
     [RelayCommand]
     private async Task LoadAsync()
     {
-        var equipment = await _equipmentRepository.GetAllAsync();
+        // A fresh scope means a fresh DbContext, so this always sees the
+        // latest committed data instead of a stale, long-lived one.
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var equipmentRepository = scope.ServiceProvider.GetRequiredService<IEquipmentRepository>();
+        var studentRepository = scope.ServiceProvider.GetRequiredService<IStudentRepository>();
+
+        var equipment = await equipmentRepository.GetAllAsync();
         EquipmentList = new ObservableCollection<Equipment>(equipment);
 
-        var students = await _studentRepository.GetAllAsync();
+        var students = await studentRepository.GetAllAsync();
         Students = new ObservableCollection<Student>(students);
     }
 
@@ -81,7 +81,10 @@ public partial class EquipmentViewModel : ObservableObject
         }
 
         // ---- Business validation happens inside BorrowEquipmentService, not here ----
-        var result = await _borrowEquipmentService.ExecuteAsync(
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var borrowEquipmentService = scope.ServiceProvider.GetRequiredService<BorrowEquipmentService>();
+
+        var result = await borrowEquipmentService.ExecuteAsync(
             SelectedStudent.Id,
             SelectedEquipment.Id,
             ExpectedReturnDate.Value.DateTime);
