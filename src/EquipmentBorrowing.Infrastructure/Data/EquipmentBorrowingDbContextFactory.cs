@@ -8,7 +8,7 @@ public class EquipmentBorrowingDbContextFactory : IDesignTimeDbContextFactory<Eq
     public EquipmentBorrowingDbContext CreateDbContext(string[] args)
     {
         var optionsBuilder = new DbContextOptionsBuilder<EquipmentBorrowingDbContext>();
-        optionsBuilder.UseSqlite(DatabasePathProvider.GetConnectionString());
+        optionsBuilder.UseNpgsql(DatabaseConnection.GetConnectionString());
 
         return new EquipmentBorrowingDbContext(optionsBuilder.Options);
     }

@@ -5,7 +5,7 @@
         x:Class="EquipmentBorrowing.Desktop.MainWindow"
         Title="Campus Equipment Borrowing System"
         Width="900" Height="600"
-        MinWidth="400" MinHeight="300">     
+        MinWidth="400" MinHeight="300">
 
     <Window.DataTemplates>
         <DataTemplate DataType="vm:EquipmentViewModel">
@@ -17,16 +17,37 @@
     </Window.DataTemplates>
 
     <Grid ColumnDefinitions="180,*">
-        <StackPanel Grid.Column="0" Classes="NavPanel">
+        <StackPanel Grid.Column="0" Classes="NavPanel" IsEnabled="{Binding IsReady}">
             <TextBlock Text="Campus Equipment" Classes="SidebarTitle" Margin="12,16,12,20"/>
             <Button Content="Equipment" Classes="NavButton" Command="{Binding ShowEquipmentCommand}"/>
             <Button Content="Active Borrowings" Classes="NavButton" Command="{Binding ShowBorrowingsCommand}"/>
         </StackPanel>
 
-        <Border Grid.Column="1" Padding="0">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                 <ContentControl Content="{Binding CurrentViewModel}"/>
+        <Grid Grid.Column="1">
+            <!-- Normal content: only when the database is ready -->
+            <ScrollViewer IsVisible="{Binding IsReady}"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto">
+                <ContentControl Content="{Binding CurrentViewModel}"/>
             </ScrollViewer>
-        </Border>
+
+            <!-- Loading state -->
+            <StackPanel IsVisible="{Binding IsStarting}"
+                        VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
+                <ProgressBar IsIndeterminate="True" Width="220"/>
+                <TextBlock Text="Connecting to PostgreSQL..." HorizontalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Error state with a way to recover -->
+            <StackPanel IsVisible="{Binding HasStartupError}"
+                        VerticalAlignment="Center" HorizontalAlignment="Center"
+                        MaxWidth="460" Margin="20" Spacing="12">
+                <TextBlock Text="Cannot start the application" FontSize="18" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding StartupError}" TextWrapping="Wrap"/>
+                <Button Content="Retry" Classes="Primary"
+                        Command="{Binding RetryStartupCommand}"
+                        HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>

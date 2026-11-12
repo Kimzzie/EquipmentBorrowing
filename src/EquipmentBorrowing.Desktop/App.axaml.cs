@@ -1,11 +1,8 @@
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using EquipmentBorrowing.Application.Interfaces;
 using EquipmentBorrowing.Application.Services;
 using EquipmentBorrowing.Desktop.ViewModels;
-using EquipmentBorrowing.Infrastructure.Data;
-using EquipmentBorrowing.Infrastructure.Repositories;
-using Microsoft.EntityFrameworkCore;
+using EquipmentBorrowing.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EquipmentBorrowing.Desktop;
@@ -24,30 +21,20 @@ public partial class App : Avalonia.Application
         // The app's clock. Singleton because it has no state; tests can swap in a fake.
         services.AddSingleton(TimeProvider.System);
 
-        // Scoped: one DbContext per operation (see the ViewModels' scope usage).
-        services.AddDbContext<EquipmentBorrowingDbContext>(options =>
-            options.UseSqlite(DatabasePathProvider.GetConnectionString()));
-
-        services.AddScoped<IStudentRepository, EfStudentRepository>();
-        services.AddScoped<IEquipmentRepository, EfEquipmentRepository>();
-        services.AddScoped<IBorrowingRepository, EfBorrowingRepository>();
-        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        // DbContext (Npgsql), repositories, unit of work, database initializer.
+        // The Desktop project no longer knows which database is behind them.
+        services.AddInfrastructure();
 
         services.AddScoped<BorrowEquipmentService>();
         services.AddScoped<ReturnEquipmentService>();
 
+        // ViewModels live for the whole app session, so they hold a scope factory
+        // and open a fresh scope (= fresh DbContext) for every operation.
         services.AddTransient<EquipmentViewModel>();
         services.AddTransient<BorrowingsViewModel>();
         services.AddTransient<MainWindowViewModel>();
 
         var provider = services.BuildServiceProvider();
-
-        using (var startupScope = provider.CreateScope())
-        {
-            var context = startupScope.ServiceProvider.GetRequiredService<EquipmentBorrowingDbContext>();
-            context.Database.Migrate();
-            DbSeeder.SeedAsync(context).GetAwaiter().GetResult();
-        }
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -58,6 +45,8 @@ public partial class App : Avalonia.Application
                 DataContext = mainWindowViewModel
             };
 
+            // The window appears immediately; the database check runs asynchronously
+            // and reports its own success or failure (see MainWindowViewModel).
             _ = mainWindowViewModel.InitializeAsync();
         }
 

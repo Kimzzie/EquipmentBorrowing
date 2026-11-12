@@ -427,3 +427,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Local database settings: contain a password, NEVER commit
+appsettings.Local.json
