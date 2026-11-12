@@ -14,6 +14,9 @@
         <DataTemplate DataType="vm:BorrowingsViewModel">
             <views:BorrowingsView />
         </DataTemplate>
+        <DataTemplate DataType="vm:StudentsViewModel">
+            <views:StudentsView />
+        </DataTemplate>
     </Window.DataTemplates>
 
     <Grid ColumnDefinitions="180,*">
@@ -21,24 +24,22 @@
             <TextBlock Text="Campus Equipment" Classes="SidebarTitle" Margin="12,16,12,20"/>
             <Button Content="Equipment" Classes="NavButton" Command="{Binding ShowEquipmentCommand}"/>
             <Button Content="Active Borrowings" Classes="NavButton" Command="{Binding ShowBorrowingsCommand}"/>
+            <Button Content="Students" Classes="NavButton" Command="{Binding ShowStudentsCommand}"/>
         </StackPanel>
 
         <Grid Grid.Column="1">
-            <!-- Normal content: only when the database is ready -->
             <ScrollViewer IsVisible="{Binding IsReady}"
                           HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Auto">
                 <ContentControl Content="{Binding CurrentViewModel}"/>
             </ScrollViewer>
 
-            <!-- Loading state -->
             <StackPanel IsVisible="{Binding IsStarting}"
                         VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
                 <ProgressBar IsIndeterminate="True" Width="220"/>
                 <TextBlock Text="Connecting to PostgreSQL..." HorizontalAlignment="Center"/>
             </StackPanel>
 
-            <!-- Error state with a way to recover -->
             <StackPanel IsVisible="{Binding HasStartupError}"
                         VerticalAlignment="Center" HorizontalAlignment="Center"
                         MaxWidth="460" Margin="20" Spacing="12">

@@ -1,0 +1,75 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="EquipmentBorrowing.Desktop.Views.StudentsView">
+
+    <StackPanel Margin="20" Spacing="10">
+        <TextBlock Text="Students" Classes="Heading"/>
+
+        <!-- Locate a student -->
+        <StackPanel Classes="FormField">
+            <TextBlock Text="Search by name or student number" Classes="Label"/>
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBox Grid.Column="0" Text="{Binding SearchText}" Margin="0,0,8,0"/>
+                <Button Grid.Column="1" Content="Search" Command="{Binding LoadCommand}" Margin="0,0,8,0"/>
+                <Button Grid.Column="2" Content="Clear" Command="{Binding ClearSearchCommand}"/>
+            </Grid>
+        </StackPanel>
+
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}"/>
+
+        <ListBox ItemsSource="{Binding Students}"
+                 SelectedItem="{Binding SelectedStudent}"
+                 MaxHeight="240">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnDefinitions="110,*,90" Margin="4">
+                        <TextBlock Grid.Column="0" Text="{Binding StudentNumber}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Column="2" Text="Eligible" Foreground="#2FA84F"
+                                   IsVisible="{Binding IsAllowedToBorrow}"/>
+                        <TextBlock Grid.Column="2" Text="Restricted" Foreground="#D64545"
+                                   IsVisible="{Binding !IsAllowedToBorrow}"/>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- Empty state: shown only when the query worked but found nobody -->
+        <TextBlock Text="No students found." Foreground="Gray"
+                   IsVisible="{Binding ShowEmptyState}"/>
+
+        <!-- Register / edit form -->
+        <TextBlock Text="{Binding FormTitle}" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0"/>
+
+        <StackPanel Classes="FormField">
+            <TextBlock Text="Student number" Classes="Label"/>
+            <TextBox Text="{Binding StudentNumber}" MinWidth="250" MaxWidth="400" HorizontalAlignment="Left"/>
+        </StackPanel>
+
+        <StackPanel Classes="FormField">
+            <TextBlock Text="Full name" Classes="Label"/>
+            <TextBox Text="{Binding FullName}" MinWidth="250" MaxWidth="400" HorizontalAlignment="Left"/>
+        </StackPanel>
+
+        <StackPanel Classes="FormField">
+            <TextBlock Text="Contact (optional)" Classes="Label"/>
+            <TextBox Text="{Binding Contact}" MinWidth="250" MaxWidth="400" HorizontalAlignment="Left"/>
+        </StackPanel>
+
+        <WrapPanel>
+            <Button Content="{Binding SaveButtonText}" Classes="Primary"
+                    Command="{Binding SaveCommand}" Margin="0,0,8,8"/>
+            <Button Content="New student" Command="{Binding NewStudentCommand}" Margin="0,0,8,8"/>
+        </WrapPanel>
+
+        <!-- Eligibility (UC-14): only when an existing student is selected -->
+        <WrapPanel IsVisible="{Binding IsEditing}">
+            <Button Content="Permit borrowing" Command="{Binding PermitBorrowingCommand}" Margin="0,0,8,8"/>
+            <Button Content="Restrict borrowing" Command="{Binding RestrictBorrowingCommand}" Margin="0,0,8,8"/>
+        </WrapPanel>
+
+        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap"
+                   Classes.ErrorMessage="{Binding IsError}"
+                   Classes.SuccessMessage="{Binding !IsError}"/>
+    </StackPanel>
+</UserControl>

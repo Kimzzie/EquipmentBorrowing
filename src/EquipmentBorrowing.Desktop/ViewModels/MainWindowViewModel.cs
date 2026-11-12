@@ -12,6 +12,7 @@ public partial class MainWindowViewModel : ObservableObject
 
     public EquipmentViewModel EquipmentViewModel { get; }
     public BorrowingsViewModel BorrowingsViewModel { get; }
+    public StudentsViewModel StudentsViewModel { get; }
 
     [ObservableProperty]
     private ObservableObject currentViewModel;
@@ -31,10 +32,12 @@ public partial class MainWindowViewModel : ObservableObject
     public MainWindowViewModel(
         EquipmentViewModel equipmentViewModel,
         BorrowingsViewModel borrowingsViewModel,
+        StudentsViewModel studentsViewModel,
         IServiceScopeFactory scopeFactory)
     {
         EquipmentViewModel = equipmentViewModel;
         BorrowingsViewModel = borrowingsViewModel;
+        StudentsViewModel = studentsViewModel;
         _scopeFactory = scopeFactory;
         currentViewModel = equipmentViewModel;
     }
@@ -54,6 +57,13 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task ShowStudentsAsync()
+    {
+        CurrentViewModel = StudentsViewModel;
+        await StudentsViewModel.LoadCommand.ExecuteAsync(null);
+    }
+
+    [RelayCommand]
     private Task RetryStartupAsync() => InitializeAsync();
 
     public async Task InitializeAsync()
@@ -69,8 +79,6 @@ public partial class MainWindowViewModel : ObservableObject
                 await initializer.InitializeAsync();
             }
 
-            // Make the content area visible BEFORE the first load, so the user sees the
-            // list appear instead of an empty screen.
             IsStarting = false;
             await ShowEquipmentAsync();
         }

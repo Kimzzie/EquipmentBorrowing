@@ -2,6 +2,12 @@
 
 public class Student
 {
+    // Single source of truth for column sizes: the EF configuration uses these too,
+    // so an over-long value is rejected with a clear message instead of a database error.
+    public const int StudentNumberMaxLength = 20;
+    public const int NameMaxLength = 100;
+    public const int ContactMaxLength = 100;
+
     public int Id { get; private set; }
     public string StudentNumber { get; private set; }
     public string Name { get; private set; }
@@ -25,9 +31,15 @@ public class Student
     // BR-03: editable fields only. Id, history and eligibility are untouched.
     public void UpdateDetails(string studentNumber, string name, string? contact)
     {
-        StudentNumber = NormalizeStudentNumber(studentNumber);
-        Name = NormalizeName(name);
-        Contact = NormalizeContact(contact);
+        // Validate EVERYTHING first, then assign. (My Stage 2 version assigned one field
+        // at a time, so a bad name could leave the object half-edited. Fixed here.)
+        var newNumber = NormalizeStudentNumber(studentNumber);
+        var newName = NormalizeName(name);
+        var newContact = NormalizeContact(contact);
+
+        StudentNumber = newNumber;
+        Name = newName;
+        Contact = newContact;
     }
 
     // BR-04: returns false when nothing changed, so the service can say

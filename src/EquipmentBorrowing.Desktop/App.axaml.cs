@@ -18,20 +18,20 @@ public partial class App : Avalonia.Application
     {
         var services = new ServiceCollection();
 
-        // The app's clock. Singleton because it has no state; tests can swap in a fake.
         services.AddSingleton(TimeProvider.System);
-
-        // DbContext (Npgsql), repositories, unit of work, database initializer.
-        // The Desktop project no longer knows which database is behind them.
         services.AddInfrastructure();
 
+        // Application services: scoped, so each one shares the DbContext of its scope.
         services.AddScoped<BorrowEquipmentService>();
         services.AddScoped<ReturnEquipmentService>();
+        services.AddScoped<FindStudentsService>();
+        services.AddScoped<RegisterStudentService>();
+        services.AddScoped<UpdateStudentService>();
+        services.AddScoped<ChangeStudentEligibilityService>();
 
-        // ViewModels live for the whole app session, so they hold a scope factory
-        // and open a fresh scope (= fresh DbContext) for every operation.
         services.AddTransient<EquipmentViewModel>();
         services.AddTransient<BorrowingsViewModel>();
+        services.AddTransient<StudentsViewModel>();
         services.AddTransient<MainWindowViewModel>();
 
         var provider = services.BuildServiceProvider();
@@ -45,8 +45,6 @@ public partial class App : Avalonia.Application
                 DataContext = mainWindowViewModel
             };
 
-            // The window appears immediately; the database check runs asynchronously
-            // and reports its own success or failure (see MainWindowViewModel).
             _ = mainWindowViewModel.InitializeAsync();
         }
 
