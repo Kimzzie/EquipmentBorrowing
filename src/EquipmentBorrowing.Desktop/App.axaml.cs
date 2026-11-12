@@ -21,11 +21,10 @@ public partial class App : Avalonia.Application
     {
         var services = new ServiceCollection();
 
-        // Scoped: one DbContext per operation. ViewModels create a new
-        // scope for every Load/Borrow/Return (see IServiceScopeFactory
-        // usage below), so all repositories used within ONE operation
-        // share the SAME context, and no operation reuses a stale one
-        // left over from an earlier click.
+        // The app's clock. Singleton because it has no state; tests can swap in a fake.
+        services.AddSingleton(TimeProvider.System);
+
+        // Scoped: one DbContext per operation (see the ViewModels' scope usage).
         services.AddDbContext<EquipmentBorrowingDbContext>(options =>
             options.UseSqlite(DatabasePathProvider.GetConnectionString()));
 
@@ -37,19 +36,12 @@ public partial class App : Avalonia.Application
         services.AddScoped<BorrowEquipmentService>();
         services.AddScoped<ReturnEquipmentService>();
 
-        // ViewModels live for the whole app session, so they hold a scope
-        // factory instead of holding repositories/services directly —
-        // otherwise they'd capture one DbContext for the entire session,
-        // exactly the staleness problem this design avoids.
         services.AddTransient<EquipmentViewModel>();
         services.AddTransient<BorrowingsViewModel>();
         services.AddTransient<MainWindowViewModel>();
 
         var provider = services.BuildServiceProvider();
 
-        // Apply any pending migrations and seed starting data on launch,
-        // so a fresh clone of this repo doesn't need a manual `dotnet ef`
-        // step before the app can run.
         using (var startupScope = provider.CreateScope())
         {
             var context = startupScope.ServiceProvider.GetRequiredService<EquipmentBorrowingDbContext>();

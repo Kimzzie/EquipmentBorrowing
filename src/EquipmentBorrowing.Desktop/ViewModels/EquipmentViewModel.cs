@@ -43,8 +43,7 @@ public partial class EquipmentViewModel : ObservableObject
     [RelayCommand]
     private async Task LoadAsync()
     {
-        // A fresh scope means a fresh DbContext, so this always sees the
-        // latest committed data instead of a stale, long-lived one.
+        // A fresh scope means a fresh DbContext, so this always sees the latest committed data.
         await using var scope = _scopeFactory.CreateAsyncScope();
         var equipmentRepository = scope.ServiceProvider.GetRequiredService<IEquipmentRepository>();
         var studentRepository = scope.ServiceProvider.GetRequiredService<IStudentRepository>();
@@ -61,7 +60,7 @@ public partial class EquipmentViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanBorrow))]
     private async Task BorrowAsync()
     {
-        // ---- Presentation validation (belongs here, in the ViewModel) ----
+        // Presentation validation only: is every input present?
         if (SelectedStudent is null)
         {
             SetStatus("Please select a student.", isError: true);
@@ -74,20 +73,22 @@ public partial class EquipmentViewModel : ObservableObject
             return;
         }
 
-        if (ExpectedReturnDate is null || ExpectedReturnDate.Value.Date < DateTimeOffset.Now.Date)
+        if (ExpectedReturnDate is null)
         {
-            SetStatus("Please select a valid return date that is not in the past.", isError: true);
+            SetStatus("Please select a return date.", isError: true);
             return;
         }
 
-        // ---- Business validation happens inside BorrowEquipmentService, not here ----
+        // The date RULE (must be later than today) lives in BorrowEquipmentService, not here.
+        var expectedReturn = DateOnly.FromDateTime(ExpectedReturnDate.Value.DateTime);
+
         await using var scope = _scopeFactory.CreateAsyncScope();
         var borrowEquipmentService = scope.ServiceProvider.GetRequiredService<BorrowEquipmentService>();
 
         var result = await borrowEquipmentService.ExecuteAsync(
             SelectedStudent.Id,
             SelectedEquipment.Id,
-            ExpectedReturnDate.Value.DateTime);
+            expectedReturn);
 
         if (result.IsSuccess)
         {

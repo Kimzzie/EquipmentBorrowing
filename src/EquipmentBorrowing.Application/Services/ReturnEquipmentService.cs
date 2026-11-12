@@ -7,15 +7,18 @@ public class ReturnEquipmentService
     private readonly IBorrowingRepository _borrowingRepository;
     private readonly IEquipmentRepository _equipmentRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public ReturnEquipmentService(
         IBorrowingRepository borrowingRepository,
         IEquipmentRepository equipmentRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _borrowingRepository = borrowingRepository;
         _equipmentRepository = equipmentRepository;
         _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ReturnResult> ExecuteAsync(
@@ -29,11 +32,15 @@ public class ReturnEquipmentService
         if (borrowing.Status == Domain.BorrowingStatus.Returned)
             return ReturnResult.Fail("Borrowing has already been returned.");
 
+        var today = _timeProvider.GetLocalToday();
+        if (today < borrowing.DateBorrowed)
+            return ReturnResult.Fail("Return date cannot be earlier than the checkout date.");
+
         var equipment = await _equipmentRepository.GetByIdAsync(borrowing.EquipmentId, cancellationToken);
         if (equipment is null)
             return ReturnResult.Fail("Associated equipment was not found.");
 
-        borrowing.MarkAsReturned();
+        borrowing.MarkAsReturned(today);
         equipment.MarkAsReturned();
 
         await _borrowingRepository.UpdateAsync(borrowing, cancellationToken);

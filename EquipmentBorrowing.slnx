@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/docs/">
+    <File Path="../../Users/CLIENT/Downloads/database-diagram.png" />
+    <File Path="database-queries.sql" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path="README.md" />
   </Folder>

@@ -12,15 +12,13 @@ public class EquipmentConfiguration : IEntityTypeConfiguration<Equipment>
 
         builder.HasKey(e => e.Id);
 
+        builder.Property(e => e.EquipmentCode)
+            .IsRequired()
+            .HasMaxLength(30);
+
         builder.Property(e => e.Name)
             .IsRequired()
             .HasMaxLength(100);
-
-        builder.Property(e => e.Type)
-            .IsRequired()
-            .HasMaxLength(50);
-
-        builder.HasIndex(e => e.Type);
 
         builder.Property(e => e.Description)
             .HasMaxLength(500);

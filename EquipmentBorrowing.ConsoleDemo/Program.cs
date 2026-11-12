@@ -4,20 +4,24 @@ using EquipmentBorrowing.Infrastructure.Repositories;
 // Manual dependency injection: create repositories, then inject into the service.
 var studentRepository = new InMemoryStudentRepository();
 var equipmentRepository = new InMemoryEquipmentRepository();
-var borrowingRepository = new InMemoryBorrowingRepository(studentRepository, equipmentRepository); ;
+var borrowingRepository = new InMemoryBorrowingRepository(studentRepository, equipmentRepository);
 var unitOfWork = new InMemoryUnitOfWork();
+var clock = TimeProvider.System;
 
 var borrowService = new BorrowEquipmentService(
     studentRepository,
     equipmentRepository,
     borrowingRepository,
-    unitOfWork);
+    unitOfWork,
+    clock);
+
+var returnDate = clock.GetLocalToday().AddDays(7);
 
 Console.WriteLine("=== Successful Case: Eligible student borrows available equipment ===");
 var successResult = await borrowService.ExecuteAsync(
     studentId: 1,           // Bryl Lim - allowed to borrow
     equipmentId: 1,         // Crimping Tool - available
-    expectedReturnDate: DateTime.UtcNow.AddDays(7));
+    expectedReturnDate: returnDate);
 
 if (successResult.IsSuccess)
 {
@@ -36,7 +40,7 @@ Console.WriteLine("=== Failure Case: Suspended student attempts to borrow ===");
 var failureResult = await borrowService.ExecuteAsync(
     studentId: 2,            // Boss Rod - NOT allowed to borrow
     equipmentId: 1,
-    expectedReturnDate: DateTime.UtcNow.AddDays(7));
+    expectedReturnDate: returnDate);
 
 if (!failureResult.IsSuccess)
 {
@@ -52,7 +56,7 @@ Console.WriteLine("=== Failure Case: Equipment already unavailable ===");
 var equipmentFailureResult = await borrowService.ExecuteAsync(
     studentId: 1,
     equipmentId: 2,           // LAN Tester - already unavailable
-    expectedReturnDate: DateTime.UtcNow.AddDays(7));
+    expectedReturnDate: returnDate);
 
 if (!equipmentFailureResult.IsSuccess)
 {

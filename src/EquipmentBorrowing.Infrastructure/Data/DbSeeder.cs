@@ -10,7 +10,6 @@ public static class DbSeeder
         CancellationToken cancellationToken = default)
     {
         // Guard: only seed on a truly empty database.
-        // Without this check, every app startup would insert duplicates.
         if (await context.Students.AnyAsync(cancellationToken))
         {
             return;
@@ -22,10 +21,10 @@ public static class DbSeeder
             new Student(id: 0, studentNumber: "2023-0003", name: "Kim Cabatingan", isAllowedToBorrow: true));
 
         context.Equipment.AddRange(
-            new Equipment(id: 0, name: "Crimping Tool", type: "Networking Tool", isAvailable: true),
-            new Equipment(id: 0, name: "LAN Tester", type: "Networking Tool", isAvailable: true),
-            new Equipment(id: 0, name: "Aircon Remote", type: "Remote Control", isAvailable: true),
-            new Equipment(id: 0, name: "Projector", type: "AV Equipment", isAvailable: true));
+            new Equipment(id: 0, equipmentCode: "EQ-001", name: "Crimping Tool", description: "Networking Tool"),
+            new Equipment(id: 0, equipmentCode: "EQ-002", name: "LAN Tester", description: "Networking Tool"),
+            new Equipment(id: 0, equipmentCode: "EQ-003", name: "Aircon Remote", description: "Remote Control"),
+            new Equipment(id: 0, equipmentCode: "EQ-004", name: "Projector", description: "AV Equipment"));
 
         await context.SaveChangesAsync(cancellationToken);
     }

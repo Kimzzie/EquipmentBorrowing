@@ -6,11 +6,11 @@ namespace EquipmentBorrowing.Infrastructure.Repositories;
 public class InMemoryEquipmentRepository : IEquipmentRepository
 {
     private readonly List<Equipment> _equipment = new()
-       {
-           new Equipment(id: 1, name: "Crimping Tool", type: "Networking Tool", isAvailable: true),
-           new Equipment(id: 2, name: "LAN Tester", type: "Networking Tool", isAvailable: false),
-           new Equipment(id: 3, name: "Aircon Remote", type: "Remote Control", isAvailable: true)
-       };
+    {
+        new Equipment(id: 1, equipmentCode: "EQ-001", name: "Crimping Tool", description: "Networking Tool"),
+        new Equipment(id: 2, equipmentCode: "EQ-002", name: "LAN Tester", description: "Networking Tool", isAvailable: false),
+        new Equipment(id: 3, equipmentCode: "EQ-003", name: "Aircon Remote", description: "Remote Control")
+    };
 
     public Task<Equipment?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
@@ -32,8 +32,7 @@ public class InMemoryEquipmentRepository : IEquipmentRepository
 
     public Task UpdateAsync(Equipment equipment, CancellationToken cancellationToken = default)
     {
-        // Same reasoning as InMemoryBorrowingRepository.UpdateAsync:
-        // the shared reference already reflects the change.
+        // The shared reference already reflects the change.
         return Task.CompletedTask;
     }
 }
