@@ -17,12 +17,12 @@ public class EquipmentConfiguration : IEntityTypeConfiguration<Equipment>
 
         builder.HasKey(e => e.Id);
 
-        builder.Property(e => e.EquipmentCode).IsRequired().HasMaxLength(30);
-        builder.Property(e => e.Name).IsRequired().HasMaxLength(100);
-        builder.Property(e => e.Description).HasMaxLength(500);
+        builder.Property(e => e.EquipmentCode).IsRequired().HasMaxLength(Equipment.EquipmentCodeMaxLength);
+        builder.Property(e => e.Name).IsRequired().HasMaxLength(Equipment.NameMaxLength);
+        builder.Property(e => e.Description).HasMaxLength(Equipment.DescriptionMaxLength);
         builder.Property(e => e.IsAvailable).IsRequired();
 
-        // BR-05 / BR-16: same technique as the student number.
+        // BR-05 / BR-16: unique after trimming and ignoring case, computed by PostgreSQL.
         builder.Property<string>("NormalizedEquipmentCode")
             .HasComputedColumnSql("lower(btrim(\"EquipmentCode\"))", stored: true);
 

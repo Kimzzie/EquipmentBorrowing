@@ -1,0 +1,76 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="EquipmentBorrowing.Desktop.Views.EquipmentManagementView">
+
+    <StackPanel Margin="20" Spacing="10">
+        <TextBlock Text="Manage Equipment" Classes="Heading"/>
+
+        <!-- Locate an item -->
+        <StackPanel Classes="FormField">
+            <TextBlock Text="Search by identifier or name" Classes="Label"/>
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBox Grid.Column="0" Text="{Binding SearchText}" Margin="0,0,8,0"/>
+                <Button Grid.Column="1" Content="Search" Command="{Binding LoadCommand}" Margin="0,0,8,0"/>
+                <Button Grid.Column="2" Content="Clear" Command="{Binding ClearSearchCommand}"/>
+            </Grid>
+            <CheckBox Content="Show available items only" IsChecked="{Binding AvailableOnly}"/>
+        </StackPanel>
+
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}"/>
+
+        <ListBox ItemsSource="{Binding EquipmentItems}"
+                 SelectedItem="{Binding SelectedEquipment}"
+                 MaxHeight="240">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnDefinitions="100,*,110" Margin="4">
+                        <TextBlock Grid.Column="0" Text="{Binding EquipmentCode}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Column="2" Text="Available" Foreground="#2FA84F"
+                                   IsVisible="{Binding IsAvailable}"/>
+                        <TextBlock Grid.Column="2" Text="Issued" Foreground="#D64545"
+                                   IsVisible="{Binding !IsAvailable}"/>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- Empty state: shown only when the query worked but found nothing -->
+        <TextBlock Text="No equipment found." Foreground="Gray"
+                   IsVisible="{Binding ShowEmptyState}"/>
+
+        <!-- Register / edit form -->
+        <TextBlock Text="{Binding FormTitle}" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0"/>
+
+        <StackPanel Classes="FormField">
+            <TextBlock Text="Equipment identifier" Classes="Label"/>
+            <TextBox Text="{Binding EquipmentCode}" MinWidth="250" MaxWidth="400" HorizontalAlignment="Left"/>
+        </StackPanel>
+
+        <StackPanel Classes="FormField">
+            <TextBlock Text="Name" Classes="Label"/>
+            <TextBox Text="{Binding ItemName}" MinWidth="250" MaxWidth="400" HorizontalAlignment="Left"/>
+        </StackPanel>
+
+        <StackPanel Classes="FormField">
+            <TextBlock Text="Description (optional)" Classes="Label"/>
+            <TextBox Text="{Binding Description}" MinWidth="250" MaxWidth="400" HorizontalAlignment="Left"/>
+        </StackPanel>
+
+        <!-- Availability is information, not a field: no input control on purpose (BR-07) -->
+        <StackPanel Classes="FormField" IsVisible="{Binding IsEditing}">
+            <TextBlock Text="Availability (changes only by borrowing or returning)" Classes="Label"/>
+            <TextBlock Text="{Binding AvailabilityText}"/>
+        </StackPanel>
+
+        <WrapPanel>
+            <Button Content="{Binding SaveButtonText}" Classes="Primary"
+                    Command="{Binding SaveCommand}" Margin="0,0,8,8"/>
+            <Button Content="New equipment" Command="{Binding NewEquipmentCommand}" Margin="0,0,8,8"/>
+        </WrapPanel>
+
+        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap"
+                   Classes.ErrorMessage="{Binding IsError}"
+                   Classes.SuccessMessage="{Binding !IsError}"/>
+    </StackPanel>
+</UserControl>

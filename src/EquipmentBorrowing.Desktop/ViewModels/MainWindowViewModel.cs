@@ -13,6 +13,7 @@ public partial class MainWindowViewModel : ObservableObject
     public EquipmentViewModel EquipmentViewModel { get; }
     public BorrowingsViewModel BorrowingsViewModel { get; }
     public StudentsViewModel StudentsViewModel { get; }
+    public EquipmentManagementViewModel EquipmentManagementViewModel { get; }
 
     [ObservableProperty]
     private ObservableObject currentViewModel;
@@ -33,11 +34,13 @@ public partial class MainWindowViewModel : ObservableObject
         EquipmentViewModel equipmentViewModel,
         BorrowingsViewModel borrowingsViewModel,
         StudentsViewModel studentsViewModel,
+        EquipmentManagementViewModel equipmentManagementViewModel,
         IServiceScopeFactory scopeFactory)
     {
         EquipmentViewModel = equipmentViewModel;
         BorrowingsViewModel = borrowingsViewModel;
         StudentsViewModel = studentsViewModel;
+        EquipmentManagementViewModel = equipmentManagementViewModel;
         _scopeFactory = scopeFactory;
         currentViewModel = equipmentViewModel;
     }
@@ -61,6 +64,13 @@ public partial class MainWindowViewModel : ObservableObject
     {
         CurrentViewModel = StudentsViewModel;
         await StudentsViewModel.LoadCommand.ExecuteAsync(null);
+    }
+
+    [RelayCommand]
+    private async Task ShowEquipmentManagementAsync()
+    {
+        CurrentViewModel = EquipmentManagementViewModel;
+        await EquipmentManagementViewModel.LoadCommand.ExecuteAsync(null);
     }
 
     [RelayCommand]

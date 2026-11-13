@@ -17,6 +17,9 @@
         <DataTemplate DataType="vm:StudentsViewModel">
             <views:StudentsView />
         </DataTemplate>
+        <DataTemplate DataType="vm:EquipmentManagementViewModel">
+            <views:EquipmentManagementView />
+        </DataTemplate>
     </Window.DataTemplates>
 
     <Grid ColumnDefinitions="180,*">
@@ -25,6 +28,7 @@
             <Button Content="Equipment" Classes="NavButton" Command="{Binding ShowEquipmentCommand}"/>
             <Button Content="Active Borrowings" Classes="NavButton" Command="{Binding ShowBorrowingsCommand}"/>
             <Button Content="Students" Classes="NavButton" Command="{Binding ShowStudentsCommand}"/>
+            <Button Content="Manage Equipment" Classes="NavButton" Command="{Binding ShowEquipmentManagementCommand}"/>
         </StackPanel>
 
         <Grid Grid.Column="1">
