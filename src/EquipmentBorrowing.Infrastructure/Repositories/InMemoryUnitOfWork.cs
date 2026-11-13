@@ -4,10 +4,17 @@ namespace EquipmentBorrowing.Infrastructure.Repositories;
 
 public class InMemoryUnitOfWork : IUnitOfWork
 {
-    // Nothing to flush — in-memory repositories write directly to their
-    // own lists. This exists only to satisfy the interface until Stage 6.
-    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    // The in-memory repositories change shared objects immediately, so there is
+    // nothing to commit and nothing to roll back.
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task<IUnitOfWorkTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IUnitOfWorkTransaction>(new NoOpTransaction());
+
+    private sealed class NoOpTransaction : IUnitOfWorkTransaction
     {
-        return Task.CompletedTask;
+        public Task SaveChangesAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task CommitAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

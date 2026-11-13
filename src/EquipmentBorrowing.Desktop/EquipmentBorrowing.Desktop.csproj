@@ -35,4 +35,10 @@
     <ProjectReference Include="..\EquipmentBorrowing.Application\EquipmentBorrowing.Application.csproj" />
     <ProjectReference Include="..\EquipmentBorrowing.Infrastructure\EquipmentBorrowing.Infrastructure.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.Local.example.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>

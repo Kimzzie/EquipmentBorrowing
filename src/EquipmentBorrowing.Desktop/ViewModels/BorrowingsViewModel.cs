@@ -1,10 +1,11 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using EquipmentBorrowing.Application.Exceptions;
 using EquipmentBorrowing.Application.Interfaces;
 using EquipmentBorrowing.Application.Services;
 using EquipmentBorrowing.Desktop.Models;
 using Microsoft.Extensions.DependencyInjection;
-using System.Collections.ObjectModel;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
@@ -33,21 +34,30 @@ public partial class BorrowingsViewModel : ObservableObject
     [RelayCommand]
     private async Task LoadAsync()
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var borrowingRepository = scope.ServiceProvider.GetRequiredService<IBorrowingRepository>();
-
-        var active = await borrowingRepository.GetActiveWithDetailsAsync();
-
-        var items = active.Select(b => new BorrowingListItem
+        try
         {
-            Id = b.Id,
-            StudentName = b.StudentName,
-            EquipmentName = b.EquipmentName,
-            DateBorrowed = b.DateBorrowed,
-            ExpectedReturnDate = b.ExpectedReturnDate
-        });
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var borrowingRepository = scope.ServiceProvider.GetRequiredService<IBorrowingRepository>();
 
-        ActiveBorrowings = new ObservableCollection<BorrowingListItem>(items);
+            var active = await borrowingRepository.GetActiveWithDetailsAsync();
+
+            var items = active.Select(b => new BorrowingListItem
+            {
+                Id = b.Id,
+                StudentName = b.StudentName,
+                EquipmentName = b.EquipmentName,
+                DateBorrowed = b.DateBorrowed,
+                ExpectedReturnDate = b.ExpectedReturnDate
+            });
+
+            ActiveBorrowings = new ObservableCollection<BorrowingListItem>(items);
+        }
+        catch (DatabaseAccessException ex)
+        {
+            ActiveBorrowings = new ObservableCollection<BorrowingListItem>();
+            StatusMessage = ex.Message;
+            IsError = true;
+        }
     }
 
     private bool CanReturn() => SelectedBorrowing is not null;
@@ -63,20 +73,13 @@ public partial class BorrowingsViewModel : ObservableObject
         }
 
         await using var scope = _scopeFactory.CreateAsyncScope();
-        var returnEquipmentService = scope.ServiceProvider.GetRequiredService<ReturnEquipmentService>();
+        var service = scope.ServiceProvider.GetRequiredService<ReturnEquipmentService>();
+        var result = await service.ExecuteAsync(SelectedBorrowing.Id);
 
-        var result = await returnEquipmentService.ExecuteAsync(SelectedBorrowing.Id);
-
-        if (result.IsSuccess)
-        {
-            StatusMessage = $"Returned '{SelectedBorrowing.EquipmentName}' successfully.";
-            IsError = false;
-            await LoadAsync();
-        }
-        else
-        {
-            StatusMessage = result.ErrorMessage ?? "Return failed.";
-            IsError = true;
-        }
+        // Success or failure, reload so the list shows the real state (a stale or repeated
+        // return disappears from the list), then show the outcome.
+        await LoadAsync();
+        StatusMessage = result.IsSuccess ? result.Message : result.Message;
+        IsError = !result.IsSuccess;
     }
 }

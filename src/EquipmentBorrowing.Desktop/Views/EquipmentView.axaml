@@ -2,14 +2,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="clr-namespace:EquipmentBorrowing.Desktop.Converters"
              x:Class="EquipmentBorrowing.Desktop.Views.EquipmentView">
-    
-    
+
     <UserControl.Resources>
         <converters:BoolToAvailabilityConverter x:Key="BoolToAvailabilityConverter"/>
     </UserControl.Resources>
 
-
-    <Grid RowDefinitions="Auto,*,Auto,Auto,Auto,Auto" Margin="20">
+    <Grid RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="20">
         <TextBlock Grid.Row="0" Text="Equipment" Classes="Heading"/>
 
         <ListBox Grid.Row="1"
@@ -18,8 +16,8 @@
                  Margin="0,12">
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <Grid ColumnDefinitions="40,*,2*,120" Margin="4">
-                        <TextBlock Grid.Column="0" Text="{Binding Id}"/>
+                    <Grid ColumnDefinitions="90,*,2*,120" Margin="4">
+                        <TextBlock Grid.Column="0" Text="{Binding EquipmentCode}"/>
                         <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold"/>
                         <TextBlock Grid.Column="2" Text="{Binding Description}" Foreground="Gray"/>
                         <TextBlock Grid.Column="3" Text="{Binding IsAvailable, Converter={StaticResource BoolToAvailabilityConverter}}"/>
@@ -49,15 +47,41 @@
                         HorizontalAlignment="Left"/>
         </StackPanel>
 
-        <Button Grid.Row="4"
-                Content="Borrow Equipment"
-                Classes="Primary"
-                Command="{Binding BorrowCommand}"
-                HorizontalAlignment="Left"
-                Margin="0,0,0,12"/>
+        <WrapPanel Grid.Row="4" Margin="0,0,0,8">
+            <Button Content="Borrow selected item"
+                    Classes="Primary"
+                    Command="{Binding BorrowCommand}"
+                    Margin="0,0,8,8"/>
+            <Button Content="Add to checkout list"
+                    Command="{Binding AddToCheckoutCommand}"
+                    Margin="0,0,8,8"/>
+        </WrapPanel>
 
-        <TextBlock Grid.Row="5"
+        <!-- UC-06: several items for one student, all or nothing -->
+        <StackPanel Grid.Row="5" Spacing="6" Margin="0,0,0,8">
+            <TextBlock Text="Checkout list (several items at once)" Classes="Label"/>
+            <ListBox ItemsSource="{Binding CheckoutItems}"
+                     SelectedItem="{Binding SelectedCheckoutItem}"
+                     MinHeight="40" MaxHeight="120">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid ColumnDefinitions="90,*" Margin="4">
+                            <TextBlock Grid.Column="0" Text="{Binding EquipmentCode}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <WrapPanel>
+                <Button Content="Remove selected" Command="{Binding RemoveFromCheckoutCommand}" Margin="0,0,8,8"/>
+                <Button Content="Clear list" Command="{Binding ClearCheckoutCommand}" Margin="0,0,8,8"/>
+                <Button Content="Check out all" Classes="Primary" Command="{Binding CheckOutCommand}" Margin="0,0,8,8"/>
+            </WrapPanel>
+        </StackPanel>
+
+        <TextBlock Grid.Row="6"
                    Text="{Binding StatusMessage}"
+                   TextWrapping="Wrap"
                    Classes.ErrorMessage="{Binding IsError}"
                    Classes.SuccessMessage="{Binding !IsError}"/>
     </Grid>

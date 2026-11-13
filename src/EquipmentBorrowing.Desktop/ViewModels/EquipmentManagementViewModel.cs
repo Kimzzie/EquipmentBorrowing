@@ -1,10 +1,12 @@
-﻿using System.Collections.ObjectModel;
+﻿using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EquipmentBorrowing.Application.Exceptions;
 using EquipmentBorrowing.Application.Services;
 using EquipmentBorrowing.Domain;
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections.ObjectModel;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 

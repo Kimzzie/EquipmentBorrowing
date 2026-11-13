@@ -1,6 +1,7 @@
 ﻿using System.Data.Common;
 using System.Net.Sockets;
 using EquipmentBorrowing.Application.Exceptions;
+using Npgsql;
 
 namespace EquipmentBorrowing.Infrastructure.Data;
 
@@ -16,6 +17,13 @@ internal static class DatabaseGuard
         try
         {
             return await read();
+        }
+        catch (PostgresException ex) when (
+            ex.SqlState is PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected)
+        {
+            // Can happen to a READ inside a Serializable checkout transaction.
+            throw new DataConflictException(
+                DataConflict.ConcurrentUpdate, DatabaseFailureTranslator.ConcurrentUpdateMessage, ex);
         }
         catch (Exception ex) when (ex is DbException or SocketException or IOException or TimeoutException)
         {

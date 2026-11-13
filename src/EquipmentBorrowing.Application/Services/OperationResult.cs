@@ -5,12 +5,13 @@ namespace EquipmentBorrowing.Application.Services;
 public enum OperationFailure
 {
     None,
-    Validation,      // staff can correct the input
+    Validation,      // the INPUT is wrong; staff can correct it
+    Rejected,        // a business rule says no (ineligible, over the limit, not available...)
     Duplicate,       // number/identifier already used
     NotFound,        // the record disappeared (stale selection)
     Conflict,        // another change got there first
     DatabaseError,   // known failure: nothing was saved
-    UnknownOutcome   // BR-18: connection lost while saving
+    UnknownOutcome   // BR-18: connection lost while committing
 }
 
 public sealed class OperationResult<T>

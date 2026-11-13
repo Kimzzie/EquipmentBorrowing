@@ -5,13 +5,15 @@ public enum DataConflict
     DuplicateStudentNumber,
     DuplicateEquipmentCode,
     EquipmentAlreadyIssued,
-    ReferenceMissing
+    ReferenceMissing,
+    ConcurrentUpdate
 }
 
 /// <summary>
-/// The database refused a write because it conflicts with existing data (a unique
-/// index or a foreign key). Infrastructure raises it, so the Application layer
-/// never has to know about PostgreSQL error codes. Known failure: nothing was saved.
+/// The database refused a write because it conflicts with existing or simultaneous data
+/// (a unique index, a foreign key, a serialization failure). Infrastructure raises it,
+/// so the Application layer never has to know about PostgreSQL error codes.
+/// Known failure: nothing was saved.
 /// </summary>
 public class DataConflictException : Exception
 {

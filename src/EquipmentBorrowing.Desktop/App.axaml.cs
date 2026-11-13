@@ -22,7 +22,9 @@ public partial class App : Avalonia.Application
         services.AddInfrastructure();
 
         // Application services: scoped, so each one shares the DbContext of its scope.
+        services.AddScoped<CheckoutProcessor>();
         services.AddScoped<BorrowEquipmentService>();
+        services.AddScoped<CheckOutMultipleEquipmentService>();
         services.AddScoped<ReturnEquipmentService>();
         services.AddScoped<FindStudentsService>();
         services.AddScoped<RegisterStudentService>();
