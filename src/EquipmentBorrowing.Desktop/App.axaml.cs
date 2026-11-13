@@ -26,6 +26,7 @@ public partial class App : Avalonia.Application
         services.AddScoped<BorrowEquipmentService>();
         services.AddScoped<CheckOutMultipleEquipmentService>();
         services.AddScoped<ReturnEquipmentService>();
+        services.AddScoped<ViewActiveBorrowingsService>();
         services.AddScoped<FindStudentsService>();
         services.AddScoped<RegisterStudentService>();
         services.AddScoped<UpdateStudentService>();

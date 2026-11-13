@@ -2,35 +2,49 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="EquipmentBorrowing.Desktop.Views.BorrowingsView">
 
-    <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="20">
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="20">
         <TextBlock Grid.Row="0" Text="Active Borrowings" Classes="Heading"/>
 
-        <ListBox Grid.Row="1"
+        <StackPanel Grid.Row="1" Spacing="6" Margin="0,8">
+            <StackPanel IsVisible="{Binding IsLoading}" Spacing="4">
+                <ProgressBar IsIndeterminate="True"/>
+                <TextBlock Text="Loading borrowings..."/>
+            </StackPanel>
+
+            <TextBlock Text="No active borrowings."
+                       IsVisible="{Binding IsEmpty}" Foreground="Gray"/>
+
+            <StackPanel IsVisible="{Binding HasLoadError}" Spacing="6">
+                <TextBlock Text="{Binding LoadError}" TextWrapping="Wrap" Classes="ErrorMessage"/>
+                <Button Content="Retry" Command="{Binding LoadCommand}" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </StackPanel>
+
+        <ListBox Grid.Row="2"
                  ItemsSource="{Binding ActiveBorrowings}"
                  SelectedItem="{Binding SelectedBorrowing}"
-                 Margin="0,12">
+                 Margin="0,0,0,12">
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <Grid ColumnDefinitions="40,*,*,120,120" Margin="4">
-                        <TextBlock Grid.Column="0" Text="{Binding Id}"/>
-                        <TextBlock Grid.Column="1" Text="{Binding StudentName}" FontWeight="SemiBold"/>
-                        <TextBlock Grid.Column="2" Text="{Binding EquipmentName}"/>
-                        <TextBlock Grid.Column="3" Text="{Binding DateBorrowed, StringFormat={}{0:yyyy-MM-dd}}"/>
-                        <TextBlock Grid.Column="4" Text="{Binding ExpectedReturnDate, StringFormat={}{0:yyyy-MM-dd}}"/>
+                    <Grid ColumnDefinitions="*,*,110,130" Margin="4">
+                        <TextBlock Grid.Column="0" Text="{Binding StudentName}" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Column="1" Text="{Binding EquipmentName}"/>
+                        <TextBlock Grid.Column="2" Text="{Binding DateBorrowed, StringFormat=\{0:yyyy-MM-dd\}}"/>
+                        <TextBlock Grid.Column="3" Text="{Binding ExpectedReturnDate, StringFormat=\{0:yyyy-MM-dd\}}"/>
                     </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <Button Grid.Row="2"
-                Content="Return Equipment"
+        <Button Grid.Row="3" Content="Return selected"
                 Classes="Primary"
                 Command="{Binding ReturnCommand}"
                 HorizontalAlignment="Left"
                 Margin="0,0,0,8"/>
 
-        <TextBlock Grid.Row="3"
+        <TextBlock Grid.Row="4"
                    Text="{Binding StatusMessage}"
+                   TextWrapping="Wrap"
                    Classes.ErrorMessage="{Binding IsError}"
                    Classes.SuccessMessage="{Binding !IsError}"/>
     </Grid>

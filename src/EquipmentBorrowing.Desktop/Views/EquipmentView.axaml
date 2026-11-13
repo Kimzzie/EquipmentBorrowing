@@ -7,10 +7,27 @@
         <converters:BoolToAvailabilityConverter x:Key="BoolToAvailabilityConverter"/>
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="20">
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="20">
         <TextBlock Grid.Row="0" Text="Equipment" Classes="Heading"/>
 
-        <ListBox Grid.Row="1"
+        <!-- Filter, loading, empty and error states -->
+        <StackPanel Grid.Row="1" Spacing="6" Margin="0,8,0,0">
+            <CheckBox Content="Show available only" IsChecked="{Binding ShowAvailableOnly}"/>
+
+            <StackPanel IsVisible="{Binding IsLoading}" Spacing="4">
+                <ProgressBar IsIndeterminate="True"/>
+                <TextBlock Text="Loading equipment..."/>
+            </StackPanel>
+
+            <TextBlock Text="{Binding EmptyMessage}" IsVisible="{Binding IsEmpty}" Foreground="Gray"/>
+
+            <StackPanel IsVisible="{Binding HasLoadError}" Spacing="6">
+                <TextBlock Text="{Binding LoadError}" TextWrapping="Wrap" Classes="ErrorMessage"/>
+                <Button Content="Retry" Command="{Binding LoadCommand}" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </StackPanel>
+
+        <ListBox Grid.Row="2"
                  ItemsSource="{Binding EquipmentList}"
                  SelectedItem="{Binding SelectedEquipment}"
                  Margin="0,12">
@@ -26,7 +43,7 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <StackPanel Grid.Row="2" Classes="FormField" Margin="0,0,0,8">
+        <StackPanel Grid.Row="3" Classes="FormField" Margin="0,0,0,8">
             <TextBlock Text="Student" Classes="Label"/>
             <ComboBox ItemsSource="{Binding Students}"
                       SelectedItem="{Binding SelectedStudent}"
@@ -41,13 +58,13 @@
             </ComboBox>
         </StackPanel>
 
-        <StackPanel Grid.Row="3" Classes="FormField" Margin="0,0,0,8">
+        <StackPanel Grid.Row="4" Classes="FormField" Margin="0,0,0,8">
             <TextBlock Text="Return Date" Classes="Label"/>
             <DatePicker SelectedDate="{Binding ExpectedReturnDate, Mode=TwoWay}"
                         HorizontalAlignment="Left"/>
         </StackPanel>
 
-        <WrapPanel Grid.Row="4" Margin="0,0,0,8">
+        <WrapPanel Grid.Row="5" Margin="0,0,0,8">
             <Button Content="Borrow selected item"
                     Classes="Primary"
                     Command="{Binding BorrowCommand}"
@@ -58,7 +75,7 @@
         </WrapPanel>
 
         <!-- UC-06: several items for one student, all or nothing -->
-        <StackPanel Grid.Row="5" Spacing="6" Margin="0,0,0,8">
+        <StackPanel Grid.Row="6" Spacing="6" Margin="0,0,0,8">
             <TextBlock Text="Checkout list (several items at once)" Classes="Label"/>
             <ListBox ItemsSource="{Binding CheckoutItems}"
                      SelectedItem="{Binding SelectedCheckoutItem}"
@@ -79,7 +96,7 @@
             </WrapPanel>
         </StackPanel>
 
-        <TextBlock Grid.Row="6"
+        <TextBlock Grid.Row="7"
                    Text="{Binding StatusMessage}"
                    TextWrapping="Wrap"
                    Classes.ErrorMessage="{Binding IsError}"

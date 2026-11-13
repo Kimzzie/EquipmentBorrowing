@@ -1,8 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EquipmentBorrowing.Application.Exceptions;
-using EquipmentBorrowing.Application.Interfaces;
 using EquipmentBorrowing.Application.Services;
 using EquipmentBorrowing.Desktop.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +12,7 @@ public partial class BorrowingsViewModel : ObservableObject
     private readonly IServiceScopeFactory _scopeFactory;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsEmpty))]
     private ObservableCollection<BorrowingListItem> activeBorrowings = new();
 
     [ObservableProperty]
@@ -21,10 +20,25 @@ public partial class BorrowingsViewModel : ObservableObject
     private BorrowingListItem? selectedBorrowing;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsEmpty))]
+    private bool isLoading;
+
+    // A failed LOAD (shown with Retry). Kept apart from StatusMessage, which reports return outcomes.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLoadError))]
+    [NotifyPropertyChangedFor(nameof(IsEmpty))]
+    private string? loadError;
+
+    [ObservableProperty]
     private string? statusMessage;
 
     [ObservableProperty]
     private bool isError;
+
+    public bool HasLoadError => LoadError is not null;
+
+    // Empty means: a load finished successfully and found nothing. Not loading, not failed.
+    public bool IsEmpty => !IsLoading && !HasLoadError && ActiveBorrowings.Count == 0;
 
     public BorrowingsViewModel(IServiceScopeFactory scopeFactory)
     {
@@ -34,29 +48,38 @@ public partial class BorrowingsViewModel : ObservableObject
     [RelayCommand]
     private async Task LoadAsync()
     {
+        IsLoading = true;
+        LoadError = null;
+
         try
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
-            var borrowingRepository = scope.ServiceProvider.GetRequiredService<IBorrowingRepository>();
+            var service = scope.ServiceProvider.GetRequiredService<ViewActiveBorrowingsService>();
+            var result = await service.ExecuteAsync();
 
-            var active = await borrowingRepository.GetActiveWithDetailsAsync();
-
-            var items = active.Select(b => new BorrowingListItem
+            if (result.IsSuccess)
             {
-                Id = b.Id,
-                StudentName = b.StudentName,
-                EquipmentName = b.EquipmentName,
-                DateBorrowed = b.DateBorrowed,
-                ExpectedReturnDate = b.ExpectedReturnDate
-            });
+                var items = result.Value!.Select(b => new BorrowingListItem
+                {
+                    Id = b.Id,
+                    StudentName = b.StudentName,
+                    EquipmentName = b.EquipmentName,
+                    DateBorrowed = b.DateBorrowed,
+                    ExpectedReturnDate = b.ExpectedReturnDate
+                });
 
-            ActiveBorrowings = new ObservableCollection<BorrowingListItem>(items);
+                ActiveBorrowings = new ObservableCollection<BorrowingListItem>(items);
+            }
+            else
+            {
+                // Never show stale rows as if they were current.
+                ActiveBorrowings = new ObservableCollection<BorrowingListItem>();
+                LoadError = result.Message;
+            }
         }
-        catch (DatabaseAccessException ex)
+        finally
         {
-            ActiveBorrowings = new ObservableCollection<BorrowingListItem>();
-            StatusMessage = ex.Message;
-            IsError = true;
+            IsLoading = false;
         }
     }
 
@@ -76,10 +99,10 @@ public partial class BorrowingsViewModel : ObservableObject
         var service = scope.ServiceProvider.GetRequiredService<ReturnEquipmentService>();
         var result = await service.ExecuteAsync(SelectedBorrowing.Id);
 
-        // Success or failure, reload so the list shows the real state (a stale or repeated
-        // return disappears from the list), then show the outcome.
+        // Reload first so the list shows the real state (a repeated or stale return disappears),
+        // then report the outcome.
         await LoadAsync();
-        StatusMessage = result.IsSuccess ? result.Message : result.Message;
+        StatusMessage = result.Message;
         IsError = !result.IsSuccess;
     }
 }

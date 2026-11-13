@@ -13,14 +13,14 @@ public partial class EquipmentViewModel : ObservableObject
     private readonly IServiceScopeFactory _scopeFactory;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsEmpty))]
     private ObservableCollection<Equipment> equipmentList = new();
 
     [ObservableProperty]
     private ObservableCollection<Student> students = new();
 
-    // The items staff have added for a multi-item checkout (UC-06).
-    // Duplicates are NOT filtered here on purpose: BR-12 says the rule rejects them
-    // visibly instead of silently ignoring them, and the service owns that rule.
+    // Items staff added for a multi-item checkout (UC-06). Duplicates are NOT filtered here:
+    // BR-12 says the rule rejects them visibly, and the service owns that rule.
     [ObservableProperty]
     private ObservableCollection<Equipment> checkoutItems = new();
 
@@ -40,16 +40,41 @@ public partial class EquipmentViewModel : ObservableObject
     [ObservableProperty]
     private DateTimeOffset? expectedReturnDate = DateTimeOffset.Now.AddDays(7);
 
+    // UC-02: show only items that are currently available.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EmptyMessage))]
+    private bool showAvailableOnly;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsEmpty))]
+    private bool isLoading;
+
+    // A failed LOAD, shown with Retry. Separate from StatusMessage (borrow/checkout outcomes)
+    // so "database error" can never be confused with "no equipment".
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLoadError))]
+    [NotifyPropertyChangedFor(nameof(IsEmpty))]
+    private string? loadError;
+
     [ObservableProperty]
     private string? statusMessage;
 
     [ObservableProperty]
     private bool isError;
 
+    public bool HasLoadError => LoadError is not null;
+    public bool IsEmpty => !IsLoading && !HasLoadError && EquipmentList.Count == 0;
+    public string EmptyMessage => ShowAvailableOnly
+        ? "No equipment is currently available."
+        : "No equipment has been registered yet.";
+
     public EquipmentViewModel(IServiceScopeFactory scopeFactory)
     {
         _scopeFactory = scopeFactory;
     }
+
+    // Changing the filter re-queries the database; the filter is not applied in memory.
+    partial void OnShowAvailableOnlyChanged(bool value) => _ = LoadAsync();
 
     [RelayCommand]
     private async Task LoadAsync()
@@ -58,6 +83,9 @@ public partial class EquipmentViewModel : ObservableObject
         var studentId = SelectedStudent?.Id;
         var equipmentId = SelectedEquipment?.Id;
 
+        IsLoading = true;
+        LoadError = null;
+
         try
         {
             // A fresh scope means a fresh DbContext, so this always sees the latest committed data.
@@ -65,7 +93,7 @@ public partial class EquipmentViewModel : ObservableObject
             var findEquipment = scope.ServiceProvider.GetRequiredService<FindEquipmentService>();
             var findStudents = scope.ServiceProvider.GetRequiredService<FindStudentsService>();
 
-            var equipmentFound = await findEquipment.ExecuteAsync(searchText: null, availableOnly: false);
+            var equipmentFound = await findEquipment.ExecuteAsync(searchText: null, availableOnly: ShowAvailableOnly);
             var studentsFound = await findStudents.ExecuteAsync(searchText: null);
 
             EquipmentList = new ObservableCollection<Equipment>(equipmentFound);
@@ -76,7 +104,13 @@ public partial class EquipmentViewModel : ObservableObject
         }
         catch (DatabaseAccessException ex)
         {
-            Show(ex.Message, isError: true);
+            // Never leave stale availability on screen as if it were current.
+            EquipmentList = new ObservableCollection<Equipment>();
+            LoadError = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 
@@ -191,11 +225,10 @@ public partial class EquipmentViewModel : ObservableObject
             return;
         }
 
-        // A plain input mistake needs no refresh. Everything else (rule rejection, stale
-        // data, conflict, database failure, unknown outcome) means the screen may be out of
-        // date, so refresh first (BR-18: reconnect and refresh before a staff decision),
-        // then show the reason. Nothing is retried automatically. The checkout list is kept
-        // so staff can adjust it.
+        // A plain input mistake needs no refresh. Everything else (rule rejection, stale data,
+        // conflict, database failure, unknown outcome) means the screen may be out of date, so
+        // refresh first (BR-18: reconnect and refresh before a staff decision), then show the
+        // reason. Nothing is retried automatically. The checkout list is kept so staff can adjust it.
         if (failure != OperationFailure.Validation)
             await LoadAsync();
 
