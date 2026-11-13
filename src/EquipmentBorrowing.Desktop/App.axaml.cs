@@ -33,11 +33,16 @@ public partial class App : Avalonia.Application
         services.AddScoped<FindEquipmentService>();
         services.AddScoped<RegisterEquipmentService>();
         services.AddScoped<UpdateEquipmentService>();
+        services.AddScoped<ViewStudentHistoryService>();
+        services.AddScoped<ViewEquipmentHistoryService>();
+        services.AddScoped<SearchBorrowingsService>();
 
         services.AddTransient<EquipmentViewModel>();
         services.AddTransient<BorrowingsViewModel>();
         services.AddTransient<StudentsViewModel>();
         services.AddTransient<EquipmentManagementViewModel>();
+        services.AddTransient<HistoryViewModel>();
+        services.AddTransient<BorrowingSearchViewModel>();
         services.AddTransient<MainWindowViewModel>();
 
         var provider = services.BuildServiceProvider();

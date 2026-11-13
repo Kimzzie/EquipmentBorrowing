@@ -23,6 +23,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IStudentRepository, EfStudentRepository>();
         services.AddScoped<IEquipmentRepository, EfEquipmentRepository>();
         services.AddScoped<IBorrowingRepository, EfBorrowingRepository>();
+        services.AddScoped<IBorrowingQueryRepository, EfBorrowingQueryRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IDatabaseInitializer, DatabaseInitializer>();
 

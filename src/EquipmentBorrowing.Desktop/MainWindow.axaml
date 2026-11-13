@@ -4,7 +4,7 @@
         xmlns:views="clr-namespace:EquipmentBorrowing.Desktop.Views"
         x:Class="EquipmentBorrowing.Desktop.MainWindow"
         Title="Campus Equipment Borrowing System"
-        Width="900" Height="600"
+        Width="1000" Height="640"
         MinWidth="400" MinHeight="300">
 
     <Window.DataTemplates>
@@ -14,6 +14,12 @@
         <DataTemplate DataType="vm:BorrowingsViewModel">
             <views:BorrowingsView />
         </DataTemplate>
+        <DataTemplate DataType="vm:BorrowingSearchViewModel">
+            <views:BorrowingSearchView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:HistoryViewModel">
+            <views:HistoryView />
+        </DataTemplate>
         <DataTemplate DataType="vm:StudentsViewModel">
             <views:StudentsView />
         </DataTemplate>
@@ -22,11 +28,13 @@
         </DataTemplate>
     </Window.DataTemplates>
 
-    <Grid ColumnDefinitions="180,*">
+    <Grid ColumnDefinitions="190,*">
         <StackPanel Grid.Column="0" Classes="NavPanel" IsEnabled="{Binding IsReady}">
             <TextBlock Text="Campus Equipment" Classes="SidebarTitle" Margin="12,16,12,20"/>
             <Button Content="Equipment" Classes="NavButton" Command="{Binding ShowEquipmentCommand}"/>
             <Button Content="Active Borrowings" Classes="NavButton" Command="{Binding ShowBorrowingsCommand}"/>
+            <Button Content="Search Borrowings" Classes="NavButton" Command="{Binding ShowBorrowingSearchCommand}"/>
+            <Button Content="History" Classes="NavButton" Command="{Binding ShowHistoryCommand}"/>
             <Button Content="Students" Classes="NavButton" Command="{Binding ShowStudentsCommand}"/>
             <Button Content="Manage Equipment" Classes="NavButton" Command="{Binding ShowEquipmentManagementCommand}"/>
         </StackPanel>
