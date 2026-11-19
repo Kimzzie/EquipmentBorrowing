@@ -210,15 +210,6 @@ A10 and A11 are not in this lab (UC-10 and UC-11 are deferred to Lab 5).
 ![A06-beforecommit-app](evidence/A06-beforecommit-app.png)
 **Shows:** the app's error message after `BeforeCommit`.
 
-![A06-beforecommit-db](evidence/A06-beforecommit-db.png)
-**Shows:** fresh-tab SQL before vs after: no new borrowings, availability unchanged (rolled back).
-
-![A06-aftercommit-app](evidence/A06-aftercommit-app.png)
-**Shows:** the "outcome unknown, please verify" message after `AfterCommit`, with no automatic retry.
-
-![A06-aftercommit-db](evidence/A06-aftercommit-db.png)
-**Shows:** fresh-tab SQL: the rows exist (the commit did happen), proving the app did not claim a rollback.
-
 ---
 
 ## A07 — UC-07 View Student Borrowing History (R6, R7)
@@ -447,9 +438,6 @@ A10 and A11 are not in this lab (UC-10 and UC-11 are deferred to Lab 5).
 ![A18-recovered](evidence/A18-recovered.png)
 **Shows:** the same screen working after the service was restarted and Retry pressed.
 
-![A18-fault](evidence/A18-fault.png)
-**Shows:** reference to A06 `BeforeCommit` and `AfterCommit` evidence (no new screenshot needed).
-
 ### Code walkthrough
 - **Layers:** View → ViewModel → Application service → repository interface → EF Core repository → PostgreSQL. Views and ViewModels contain no SQL and no `DbContext`.
 - **Lifetimes:** ViewModels are transient and hold only `IServiceScopeFactory`. Each operation calls `CreateAsyncScope()`, so it gets its own scoped services and a fresh `DbContext`. A failed operation therefore cannot leave a poisoned context for the next one.
@@ -466,9 +454,6 @@ A10 and A11 are not in this lab (UC-10 and UC-11 are deferred to Lab 5).
 
 ![A19-diagram](evidence/A19-diagram.png)
 **Shows:** the updated use-case diagram with the custodian as primary actor.
-
-![A19-readme-run](evidence/A19-readme-run.png)
-**Shows:** the README setup steps run on a clean clone, with the app opening. *(optional)*
 
 ![A19-git-log](evidence/A19-git-log.png)
 **Shows:** `git log --oneline` with meaningful commits.
