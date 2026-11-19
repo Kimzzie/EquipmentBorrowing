@@ -1,6 +1,6 @@
 # Laboratory Activity 4 — Acceptance and Evidence (Appendix C)
 
-**Students:** <Full Name 1> (<Student ID>) and <Full Name 2> (<Student ID>)
+**Student:** Kimberly Bautista (2023303116) — completed individually, no partner
 **Repository:** https://github.com/Kimzzie/EquipmentBorrowing
 **Database used for all evidence:** disposable PostgreSQL database `equipment_borrowing_test` (never the working database).
 **Note:** Borrowing dates in the test database were spread by SQL so that date sorting could be demonstrated (A09).
@@ -450,7 +450,7 @@ A10 and A11 are not in this lab (UC-10 and UC-11 are deferred to Lab 5).
 ## A19 — Documents and README agree (R8)
 **Action:** Review the diagram, catalog, suite and traceability against the implementation and evidence; follow the README setup and migration steps.
 **Expected:** Source, instructions and evidence agree.
-**Observed:** *(fill in after the final review)*
+**Observed:** The use-case diagram, catalog, suite and traceability matrix were reviewed against the implementation and the evidence in this file. Following the README steps (configuration, migrations, run) started the application against PostgreSQL.
 
 ![A19-diagram](evidence/A19-diagram.png)
 **Shows:** the updated use-case diagram with the custodian as primary actor.
