@@ -1,4 +1,165 @@
-# Equipment Borrowing System
+# Campus Equipment Borrowing System
+
+A desktop application for laboratory staff to register students and equipment, issue and return equipment (one item or several at once), and review borrowing history. Built with C# / .NET 10, Avalonia UI (MVVM with CommunityToolkit.Mvvm), EF Core and PostgreSQL.
+
+**Authors:** Kmberly Bautista, 2023303116
+
+## Lab 4 summary
+
+Lab 4 moved the system from SQLite to PostgreSQL and added student and equipment management, atomic multi-item checkout, history views and borrowing search. Sections 1 to 8 below describe the current (Lab 4) system. The Lab 1 to 3 write-ups are preserved unchanged under **Earlier labs** at the end.
+
+## 1. Prerequisites
+
+- .NET 10 SDK
+- PostgreSQL 16 or newer running locally (pgAdmin optional)
+- EF Core CLI: `dotnet tool install --global dotnet-ef`
+- Git
+
+## 2. Installation
+
+```powershell
+git clone https://github.com/Kimzzie/EquipmentBorrowing.git
+cd EquipmentBorrowing
+dotnet restore
+dotnet build
+```
+
+## 3. Database setup
+
+In pgAdmin's Query Tool (or `psql`) as a superuser, choose your own password:
+
+```sql
+CREATE ROLE equipment_app LOGIN PASSWORD '<choose-a-password>';
+CREATE DATABASE equipment_borrowing      OWNER equipment_app;
+CREATE DATABASE equipment_borrowing_test OWNER equipment_app;  -- disposable: failure demos only
+```
+
+## 4. Configuration (no credentials in Git)
+
+The connection string is never committed. The app reads it, in this order, from:
+
+1. the environment variable `EQUIPMENT_BORROWING_CONNECTION`, or
+2. `appsettings.Local.json` in the **solution folder** (git-ignored). The lookup walks upward from the application folder and from the current directory, so one file in the solution folder serves both the app and `dotnet ef`.
+
+To use the file:
+
+```powershell
+Copy-Item appsettings.Local.example.json appsettings.Local.json
+# then edit appsettings.Local.json and replace <your-password>
+```
+
+```json
+{
+  "ConnectionStrings": {
+    "EquipmentBorrowing": "Host=localhost;Port=5432;Database=equipment_borrowing;Username=equipment_app;Password=<your-password>"
+  }
+}
+```
+
+Or, for the current PowerShell session only:
+
+```powershell
+$env:EQUIPMENT_BORROWING_CONNECTION = "Host=localhost;Port=5432;Database=equipment_borrowing;Username=equipment_app;Password=<your-password>"
+```
+
+## 5. Migrations (create the schema)
+
+```powershell
+dotnet ef database update --project src\EquipmentBorrowing.Infrastructure
+```
+
+This applies the migrations in `src/EquipmentBorrowing.Infrastructure/Migrations` (`InitialPostgreSql`) to an empty database and creates the whole schema. The application also applies pending migrations at startup. After changing the model, add a new migration:
+
+```powershell
+dotnet ef migrations add <Name> --project src\EquipmentBorrowing.Infrastructure
+```
+
+## 6. Initial data
+
+On startup, if the Students, Equipment and Borrowings tables are **all empty**, the app seeds 4 students (one restricted) and 6 equipment items (EQ-001 to EQ-006). It never seeds a database that already contains data, so restarting never overwrites anything.
+
+## 7. Run
+
+```powershell
+dotnet run --project src\EquipmentBorrowing.Desktop
+```
+
+If PostgreSQL is unreachable, the app shows a startup error with a Retry button instead of crashing.
+
+## 8. Architecture and key decisions
+
+```text
+View (Avalonia XAML)
+  -> ViewModel (CommunityToolkit.Mvvm)
+    -> Application Service (use cases, business rules)
+      -> Repository interface (Application layer)
+        -> EF Core repository (Infrastructure)
+          -> PostgreSQL
+```
+
+| Project | Responsibility |
+|---|---|
+| `Domain` | `Student`, `Equipment`, `Borrowing` and their invariants. Depends on nothing. |
+| `Application` | One service per use case, repository interfaces, `OperationResult`, typed exceptions. Depends on Domain only. |
+| `Infrastructure` | EF Core mappings, migrations, Npgsql repositories, unit of work, seeding. Implements the Application interfaces. |
+| `Desktop` | Views, ViewModels and dependency-injection setup. Never runs SQL, configures connections or runs migrations. |
+| `ConsoleDemo` | Lab 1 manual-DI demo using the in-memory repositories. |
+| `Tests` | Test project (placeholder). Verification for Lab 4 is manual, see `docs/evidence.md`. |
+
+`Infrastructure.AddInfrastructure()` is the only place that knows about Npgsql. The one place a ViewModel touches an Application port directly is startup: `MainWindowViewModel` calls `IDatabaseInitializer` to migrate and seed.
+
+### DbContext and dependency-injection lifetimes
+
+- `DbContext`, repositories, unit of work and Application services are **scoped**.
+- ViewModels live as long as the window, so they hold an `IServiceScopeFactory` and open a **new scope for every operation** (load, borrow, return, search). Each operation therefore gets a fresh `DbContext`: it never sees stale tracked data, and a failed operation cannot poison the next one.
+- History and search loads are asynchronous and cancellable. A newer selection cancels the older request and its result is discarded, so two students' records never mix on screen.
+
+### Transaction decisions
+
+- Checkout (UC-03 single item, UC-06 several items) and return (UC-05) run inside one explicit **Serializable** transaction. The current student, items and active count are re-read **inside** the transaction before any write (BR-15). Any rejection disposes the transaction without committing, so nothing is saved.
+- Two concurrent checkouts of the **same item** are stopped by the partial unique index `UX_Borrowings_OneActivePerEquipment`. Two concurrent checkouts for the **same student** that would together exceed the limit of three are stopped by Serializable isolation: PostgreSQL aborts one of them (SQLSTATE 40001) and the app reports a conflict.
+- A failure **before** the commit is a known failure: nothing was saved. A connection lost **during** the commit is an **unknown outcome** (BR-18): the app says so, never claims a rollback, never retries automatically and refreshes the data for staff to check.
+- Automatic retry (`EnableRetryOnFailure`) is deliberately **not** enabled, for the same reason.
+
+### Database integrity (BR-01, 05, 10, 14, 16)
+
+Primary keys; foreign keys with `Restrict` (no hard delete, history is preserved); required-field and not-blank check constraints; `ExpectedReturnDate > DateBorrowed`; a status/return-date consistency check; unique indexes on `lower(btrim(StudentNumber))` and `lower(btrim(EquipmentCode))` through stored generated columns, so database uniqueness matches the application's normalization; and the single-active-borrowing partial unique index.
+
+### Dates
+
+Dates are `DateOnly`, taken from `TimeProvider` in the machine's local time zone.
+
+## Safe failure demonstration
+
+Use the **disposable** database only:
+
+```powershell
+$env:EQUIPMENT_BORROWING_CONNECTION = "Host=localhost;Port=5432;Database=equipment_borrowing_test;Username=equipment_app;Password=<your-password>"
+$env:EQUIPMENT_BORROWING_FAULT = "BeforeCommit"   # or "AfterCommit"
+dotnet run --project src\EquipmentBorrowing.Desktop
+```
+
+`EQUIPMENT_BORROWING_FAULT` is a test seam (`FaultInjection.cs`). It refuses to act unless the connected database name ends in `_test`. `BeforeCommit` fails after the writes were sent but before the commit (rolled back). `AfterCommit` commits and then simulates a lost acknowledgment (unknown outcome). Remove the variables afterwards:
+
+```powershell
+Remove-Item Env:EQUIPMENT_BORROWING_FAULT
+Remove-Item Env:EQUIPMENT_BORROWING_CONNECTION
+```
+
+## Documentation
+
+- `docs/use-case-diagram.png`: use-case diagram (primary actor: Laboratory Staff / Equipment Custodian; supporting system: PostgreSQL)
+- `docs/use-case-catalog.md`: catalog and Lab 4 classification
+- `docs/traceability.md`: use cases mapped to implementation and acceptance IDs
+- `docs/evidence.md`: expected versus observed results, A01 to A19
+- `docs/database-diagram.png`, `docs/database-queries.sql`: from earlier labs
+
+---
+
+# Earlier labs
+
+The sections below are the original Lab 1 to 3 documentation, kept as written. Where they mention SQLite, that was replaced by PostgreSQL in Lab 4 (see above).
+
 
 ## 1. Solution Structure
 
