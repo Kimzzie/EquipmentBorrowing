@@ -1,4 +1,4 @@
-﻿using EquipmentBorrowing.Application.Dtos;
+using EquipmentBorrowing.Application.Dtos;
 
 namespace EquipmentBorrowing.Application.Interfaces;
 
@@ -8,6 +8,7 @@ namespace EquipmentBorrowing.Application.Interfaces;
 /// </summary>
 public interface IBorrowingQueryRepository
 {
+    Task<BorrowingRecord?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<BorrowingRecord>> GetByStudentAsync(int studentId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<BorrowingRecord>> GetByEquipmentAsync(int equipmentId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<BorrowingRecord>> SearchAsync(BorrowingQuery query, CancellationToken cancellationToken = default);

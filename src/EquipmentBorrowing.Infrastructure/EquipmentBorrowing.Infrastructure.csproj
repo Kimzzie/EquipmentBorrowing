@@ -7,6 +7,10 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
+		<!-- Pinned to the same version as EntityFrameworkCore. Without this line the relational
+		     part resolves to 10.0.4 through Npgsql, and every app that uses Infrastructure
+		     crashes at runtime asking for 10.0.12. -->
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>

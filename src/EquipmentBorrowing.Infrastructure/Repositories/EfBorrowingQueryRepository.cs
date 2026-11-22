@@ -1,4 +1,4 @@
-﻿using EquipmentBorrowing.Application.Dtos;
+using EquipmentBorrowing.Application.Dtos;
 using EquipmentBorrowing.Application.Interfaces;
 using EquipmentBorrowing.Domain;
 using EquipmentBorrowing.Infrastructure.Data;
@@ -42,6 +42,14 @@ public class EfBorrowingQueryRepository : IBorrowingQueryRepository
             x.B.ExpectedReturnDate,
             x.B.DateReturned,
             x.B.Status));
+
+    public Task<BorrowingRecord?> GetByIdAsync(
+        int id, CancellationToken cancellationToken = default)
+    {
+        return DatabaseGuard.ReadAsync(() =>
+            ToRecords(JoinedRows().Where(x => x.B.Id == id))
+                .FirstOrDefaultAsync(cancellationToken));
+    }
 
     public Task<IReadOnlyList<BorrowingRecord>> GetByStudentAsync(
         int studentId, CancellationToken cancellationToken = default)
