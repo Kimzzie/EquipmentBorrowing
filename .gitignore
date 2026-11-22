@@ -430,3 +430,6 @@ FodyWeavers.xsd
 
 # Local database settings: contain a password, NEVER commit
 appsettings.Local.json
+# Lab 5: machine-made files that are not evidence
+*.Backup.tmp
+docs/evidence/lab5/.last-snapshot.txt

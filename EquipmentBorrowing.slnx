@@ -1,12 +1,13 @@
 <Solution>
   <Folder Name="/docs/">
-    <File Path="../../Users/CLIENT/Downloads/database-diagram.png" />
+    <File Path="docs/database-diagram.png" />
     <File Path="database-queries.sql" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path="README.md" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/EquipmentBorrowing.Api/EquipmentBorrowing.Api.csproj" />
     <Project Path="src/EquipmentBorrowing.Application/EquipmentBorrowing.Application.csproj" />
     <Project Path="src/EquipmentBorrowing.Desktop/EquipmentBorrowing.Desktop.csproj" />
     <Project Path="src/EquipmentBorrowing.Domain/EquipmentBorrowing.Domain.csproj" />
@@ -14,6 +15,9 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/EquipmentBorrowing.Tests/EquipmentBorrowing.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/EquipmentBorrowing.TestData/EquipmentBorrowing.TestData.csproj" />
   </Folder>
   <Project Path="EquipmentBorrowing.ConsoleDemo/EquipmentBorrowing.ConsoleDemo.csproj" Id="7c4f4cae-18b2-4f2b-82ca-93ef07dd1eda" />
 </Solution>
