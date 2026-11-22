@@ -1,34 +1,30 @@
-﻿using Avalonia;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EquipmentBorrowing.Application.Exceptions;
-using EquipmentBorrowing.Application.Services;
-using EquipmentBorrowing.Domain;
-using Microsoft.Extensions.DependencyInjection;
-using System.Collections.ObjectModel;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using EquipmentBorrowing.Desktop.Api;
+using EquipmentBorrowing.Desktop.Models;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
 public partial class EquipmentManagementViewModel : ObservableObject
 {
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IEquipmentApi _api;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowEmptyState))]
-    private ObservableCollection<Equipment> equipmentItems = new();
+    private ObservableCollection<EquipmentItem> equipmentItems = new();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsEditing))]
     [NotifyPropertyChangedFor(nameof(FormTitle))]
     [NotifyPropertyChangedFor(nameof(SaveButtonText))]
     [NotifyPropertyChangedFor(nameof(AvailabilityText))]
-    private Equipment? selectedEquipment;
+    private EquipmentItem? selectedEquipment;
 
     [ObservableProperty] private string searchText = string.Empty;
     [ObservableProperty] private bool availableOnly;
 
-    // Form fields. They hold what staff typed; the service validates them.
+    // Form fields. They hold what staff typed; the API validates them.
     [ObservableProperty] private string equipmentCode = string.Empty;
     [ObservableProperty] private string itemName = string.Empty;
     [ObservableProperty] private string description = string.Empty;
@@ -55,16 +51,16 @@ public partial class EquipmentManagementViewModel : ObservableObject
             ? "Available"
             : "Not available (currently issued)";
 
-    // "No results" and "the database failed" must look different (BR-19).
+    // "No results" and "the service failed" must look different (BR-19).
     public bool ShowEmptyState => !IsBusy && !LoadFailed && EquipmentItems.Count == 0;
 
-    public EquipmentManagementViewModel(IServiceScopeFactory scopeFactory)
+    public EquipmentManagementViewModel(IEquipmentApi api)
     {
-        _scopeFactory = scopeFactory;
+        _api = api;
     }
 
     // Selecting an item copies its values into the form; selecting nothing clears it.
-    partial void OnSelectedEquipmentChanged(Equipment? value)
+    partial void OnSelectedEquipmentChanged(EquipmentItem? value)
     {
         EquipmentCode = value?.EquipmentCode ?? string.Empty;
         ItemName = value?.Name ?? string.Empty;
@@ -105,21 +101,14 @@ public partial class EquipmentManagementViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            await using var scope = _scopeFactory.CreateAsyncScope();
+            var request = new EquipmentRequest(EquipmentCode, ItemName, Description);
+            var editingId = SelectedEquipment?.Id;
 
-            OperationResult<Equipment> result;
-            if (SelectedEquipment is null)
-            {
-                var register = scope.ServiceProvider.GetRequiredService<RegisterEquipmentService>();
-                result = await register.ExecuteAsync(EquipmentCode, ItemName, Description);
-            }
-            else
-            {
-                var update = scope.ServiceProvider.GetRequiredService<UpdateEquipmentService>();
-                result = await update.ExecuteAsync(SelectedEquipment.Id, EquipmentCode, ItemName, Description);
-            }
+            var result = editingId is null
+                ? await _api.RegisterEquipmentAsync(request)
+                : await _api.UpdateEquipmentAsync(editingId.Value, request);
 
-            await ShowResultAsync(result, SelectedEquipment?.Id);
+            await ShowResultAsync(result, editingId, editingId is null ? "Equipment registered." : "Equipment updated.");
         }
         finally
         {
@@ -128,28 +117,24 @@ public partial class EquipmentManagementViewModel : ObservableObject
     }
 
     // One place decides what each outcome means for the screen.
-    private async Task ShowResultAsync(OperationResult<Equipment> result, int? currentEquipmentId)
+    private async Task ShowResultAsync(ApiResult<EquipmentDto> result, int? currentEquipmentId, string successMessage)
     {
         if (result.IsSuccess)
         {
-            // Reload from the database and select the saved item, so the screen
-            // shows what is actually stored.
             await ReloadAsync(result.Value!.Id);
-            Show(result.Message, isError: false);
+            Show(successMessage, isError: false);
             return;
         }
 
         switch (result.Failure)
         {
-            case OperationFailure.Validation:
-            case OperationFailure.Duplicate:
+            case ApiFailure.Validation:
+            case ApiFailure.Duplicate:
                 // Keep the form exactly as typed so staff can correct it.
                 Show(result.Message, isError: true);
                 break;
 
             default:
-                // NotFound, Conflict, DatabaseError, UnknownOutcome: the screen may be out
-                // of date, so refresh first, then show the reason. Nothing is retried automatically.
                 await ReloadAsync(currentEquipmentId);
                 Show(result.Message, isError: true);
                 break;
@@ -161,22 +146,29 @@ public partial class EquipmentManagementViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            await using var scope = _scopeFactory.CreateAsyncScope();
-            var find = scope.ServiceProvider.GetRequiredService<FindEquipmentService>();
-            var found = await find.ExecuteAsync(SearchText, AvailableOnly);
+            var result = await _api.GetEquipmentAsync(AvailableOnly);
 
-            EquipmentItems = new ObservableCollection<Equipment>(found);
+            if (!result.IsSuccess)
+            {
+                LoadFailed = true;
+                EquipmentItems = new ObservableCollection<EquipmentItem>();
+                Show(result.Message, isError: true);
+                return;
+            }
+
+            // The API (API-01) filters by availability only, so the text search is applied here, on identifier or name.
+            var text = SearchText.Trim();
+            var items = result.Value!
+                .Select(e => e.ToItem())
+                .Where(e => text.Length == 0
+                    || e.EquipmentCode.Contains(text, StringComparison.OrdinalIgnoreCase)
+                    || e.Name.Contains(text, StringComparison.OrdinalIgnoreCase));
+
+            EquipmentItems = new ObservableCollection<EquipmentItem>(items);
             LoadFailed = false;
 
-            // Select AFTER replacing the list. If the item is gone (or filtered out),
-            // this selects nothing and the form returns to "register" mode.
+            // Select AFTER replacing the list. If the item is gone (or filtered out), this selects nothing.
             SelectedEquipment = selectId is null ? null : EquipmentItems.FirstOrDefault(e => e.Id == selectId);
-        }
-        catch (DatabaseAccessException ex)
-        {
-            LoadFailed = true;
-            EquipmentItems = new ObservableCollection<Equipment>();
-            Show(ex.Message, isError: true);
         }
         finally
         {

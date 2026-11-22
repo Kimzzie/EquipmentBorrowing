@@ -1,15 +1,14 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EquipmentBorrowing.Application.Services;
+using EquipmentBorrowing.Desktop.Api;
 using EquipmentBorrowing.Desktop.Models;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
 public partial class BorrowingsViewModel : ObservableObject
 {
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IEquipmentApi _api;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsEmpty))]
@@ -40,9 +39,9 @@ public partial class BorrowingsViewModel : ObservableObject
     // Empty means: a load finished successfully and found nothing. Not loading, not failed.
     public bool IsEmpty => !IsLoading && !HasLoadError && ActiveBorrowings.Count == 0;
 
-    public BorrowingsViewModel(IServiceScopeFactory scopeFactory)
+    public BorrowingsViewModel(IEquipmentApi api)
     {
-        _scopeFactory = scopeFactory;
+        _api = api;
     }
 
     [RelayCommand]
@@ -53,9 +52,8 @@ public partial class BorrowingsViewModel : ObservableObject
 
         try
         {
-            await using var scope = _scopeFactory.CreateAsyncScope();
-            var service = scope.ServiceProvider.GetRequiredService<ViewActiveBorrowingsService>();
-            var result = await service.ExecuteAsync();
+            var result = await _api.SearchBorrowingsAsync(
+                search: null, status: "Active", sort: "borrowedDate", direction: "asc");
 
             if (result.IsSuccess)
             {
@@ -64,7 +62,7 @@ public partial class BorrowingsViewModel : ObservableObject
                     Id = b.Id,
                     StudentName = b.StudentName,
                     EquipmentName = b.EquipmentName,
-                    DateBorrowed = b.DateBorrowed,
+                    DateBorrowed = b.BorrowedDate,
                     ExpectedReturnDate = b.ExpectedReturnDate
                 });
 
@@ -95,14 +93,13 @@ public partial class BorrowingsViewModel : ObservableObject
             return;
         }
 
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var service = scope.ServiceProvider.GetRequiredService<ReturnEquipmentService>();
-        var result = await service.ExecuteAsync(SelectedBorrowing.Id);
+        var item = SelectedBorrowing;
+        var result = await _api.ReturnAsync(item.Id);
 
         // Reload first so the list shows the real state (a repeated or stale return disappears),
         // then report the outcome.
         await LoadAsync();
-        StatusMessage = result.Message;
+        StatusMessage = result.IsSuccess ? $"'{item.EquipmentName}' returned by {item.StudentName}." : result.Message;
         IsError = !result.IsSuccess;
     }
 }

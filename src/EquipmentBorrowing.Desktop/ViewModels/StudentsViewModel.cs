@@ -1,21 +1,18 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using EquipmentBorrowing.Application.Exceptions;
-using EquipmentBorrowing.Application.Services;
-using EquipmentBorrowing.Domain;
-using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using EquipmentBorrowing.Desktop.Api;
+using EquipmentBorrowing.Desktop.Models;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
 public partial class StudentsViewModel : ObservableObject
 {
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IEquipmentApi _api;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowEmptyState))]
-    private ObservableCollection<Student> students = new();
+    private ObservableCollection<StudentItem> students = new();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsEditing))]
@@ -23,11 +20,11 @@ public partial class StudentsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(SaveButtonText))]
     [NotifyCanExecuteChangedFor(nameof(PermitBorrowingCommand))]
     [NotifyCanExecuteChangedFor(nameof(RestrictBorrowingCommand))]
-    private Student? selectedStudent;
+    private StudentItem? selectedStudent;
 
     [ObservableProperty] private string searchText = string.Empty;
 
-    // Form fields. They hold what staff typed; the service validates them.
+    // Form fields. They hold what staff typed; the API validates them.
     [ObservableProperty] private string studentNumber = string.Empty;
     [ObservableProperty] private string fullName = string.Empty;
     [ObservableProperty] private string contact = string.Empty;
@@ -47,16 +44,16 @@ public partial class StudentsViewModel : ObservableObject
     public string FormTitle => IsEditing ? "Edit student" : "Register new student";
     public string SaveButtonText => IsEditing ? "Save changes" : "Register student";
 
-    // "No results" and "the database failed" must look different (BR-19).
+    // "No results" and "the service failed" must look different (BR-19).
     public bool ShowEmptyState => !IsBusy && !LoadFailed && Students.Count == 0;
 
-    public StudentsViewModel(IServiceScopeFactory scopeFactory)
+    public StudentsViewModel(IEquipmentApi api)
     {
-        _scopeFactory = scopeFactory;
+        _api = api;
     }
 
     // Selecting a student copies his/her values into the form; selecting nothing clears it.
-    partial void OnSelectedStudentChanged(Student? value)
+    partial void OnSelectedStudentChanged(StudentItem? value)
     {
         StudentNumber = value?.StudentNumber ?? string.Empty;
         FullName = value?.Name ?? string.Empty;
@@ -93,21 +90,14 @@ public partial class StudentsViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            await using var scope = _scopeFactory.CreateAsyncScope();
+            var request = new StudentRequest(StudentNumber, FullName, Contact);
+            var editingId = SelectedStudent?.Id;
 
-            OperationResult<Student> result;
-            if (SelectedStudent is null)
-            {
-                var register = scope.ServiceProvider.GetRequiredService<RegisterStudentService>();
-                result = await register.ExecuteAsync(StudentNumber, FullName, Contact);
-            }
-            else
-            {
-                var update = scope.ServiceProvider.GetRequiredService<UpdateStudentService>();
-                result = await update.ExecuteAsync(SelectedStudent.Id, StudentNumber, FullName, Contact);
-            }
+            var result = editingId is null
+                ? await _api.RegisterStudentAsync(request)
+                : await _api.UpdateStudentAsync(editingId.Value, request);
 
-            await ShowResultAsync(result, SelectedStudent?.Id);
+            await ShowResultAsync(result, editingId, editingId is null ? "Student registered." : "Student updated.");
         }
         finally
         {
@@ -133,11 +123,9 @@ public partial class StudentsViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            await using var scope = _scopeFactory.CreateAsyncScope();
-            var service = scope.ServiceProvider.GetRequiredService<ChangeStudentEligibilityService>();
-            var result = await service.ExecuteAsync(studentId, allowBorrowing);
-
-            await ShowResultAsync(result, studentId);
+            var result = await _api.ChangeEligibilityAsync(studentId, allowBorrowing);
+            await ShowResultAsync(result, studentId,
+                allowBorrowing ? "Borrowing permitted." : "Borrowing restricted.");
         }
         finally
         {
@@ -146,29 +134,27 @@ public partial class StudentsViewModel : ObservableObject
     }
 
     // One place decides what each outcome means for the screen.
-    private async Task ShowResultAsync(OperationResult<Student> result, int? currentStudentId)
+    private async Task ShowResultAsync(ApiResult<StudentDto> result, int? currentStudentId, string successMessage)
     {
         if (result.IsSuccess)
         {
-            // Reload from the database and select the saved student, so the screen
-            // shows what is actually stored.
+            // Reload from the API and select the saved student, so the screen shows what is actually stored.
             await ReloadAsync(result.Value!.Id);
-            Show(result.Message, isError: false);
+            Show(successMessage, isError: false);
             return;
         }
 
         switch (result.Failure)
         {
-            case OperationFailure.Validation:
-            case OperationFailure.Duplicate:
+            case ApiFailure.Validation:
+            case ApiFailure.Duplicate:
                 // Keep the form exactly as typed so staff can correct it.
                 Show(result.Message, isError: true);
                 break;
 
             default:
-                // NotFound, Conflict, DatabaseError, UnknownOutcome: the screen may be out
-                // of date, so refresh first (BR-18: "reconnect and refresh before a staff
-                // decision"), then show the reason. Nothing is retried automatically.
+                // NotFound, Conflict, Server, Unreachable...: the screen may be out of date, so refresh
+                // first (BR-18), then show the reason. Nothing is retried automatically.
                 await ReloadAsync(currentStudentId);
                 Show(result.Message, isError: true);
                 break;
@@ -180,22 +166,22 @@ public partial class StudentsViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            await using var scope = _scopeFactory.CreateAsyncScope();
-            var find = scope.ServiceProvider.GetRequiredService<FindStudentsService>();
-            var found = await find.ExecuteAsync(SearchText);
+            var result = await _api.GetStudentsAsync(SearchText);
 
-            Students = new ObservableCollection<Student>(found);
+            if (!result.IsSuccess)
+            {
+                LoadFailed = true;
+                Students = new ObservableCollection<StudentItem>();
+                Show(result.Message, isError: true);
+                return;
+            }
+
+            Students = new ObservableCollection<StudentItem>(result.Value!.Select(s => s.ToItem()));
             LoadFailed = false;
 
-            // Select AFTER replacing the list. If the student is gone, this selects
-            // nothing and the form returns to "register" mode.
+            // Select AFTER replacing the list. If the student is gone, this selects nothing
+            // and the form returns to "register" mode.
             SelectedStudent = selectId is null ? null : Students.FirstOrDefault(s => s.Id == selectId);
-        }
-        catch (DatabaseAccessException ex)
-        {
-            LoadFailed = true;
-            Students = new ObservableCollection<Student>();
-            Show(ex.Message, isError: true);
         }
         finally
         {

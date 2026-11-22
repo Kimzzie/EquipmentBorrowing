@@ -1,46 +1,43 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EquipmentBorrowing.Application.Exceptions;
-using EquipmentBorrowing.Application.Services;
-using EquipmentBorrowing.Domain;
-using Microsoft.Extensions.DependencyInjection;
+using EquipmentBorrowing.Desktop.Api;
+using EquipmentBorrowing.Desktop.Models;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
 public partial class EquipmentViewModel : ObservableObject
 {
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IEquipmentApi _api;
+    private CancellationTokenSource? _loadCts;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsEmpty))]
-    private ObservableCollection<Equipment> equipmentList = new();
+    private ObservableCollection<EquipmentItem> equipmentList = new();
 
     [ObservableProperty]
-    private ObservableCollection<Student> students = new();
+    private ObservableCollection<StudentItem> students = new();
 
-    // Items staff added for a multi-item checkout (UC-06). Duplicates are NOT filtered here:
-    // BR-12 says the rule rejects them visibly, and the service owns that rule.
+    // Duplicates are NOT filtered here: BR-12 says the rule rejects them visibly, and the API owns that rule.
     [ObservableProperty]
-    private ObservableCollection<Equipment> checkoutItems = new();
+    private ObservableCollection<EquipmentItem> checkoutItems = new();
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(BorrowCommand))]
     [NotifyCanExecuteChangedFor(nameof(AddToCheckoutCommand))]
-    private Equipment? selectedEquipment;
+    private EquipmentItem? selectedEquipment;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(BorrowCommand))]
-    private Student? selectedStudent;
+    private StudentItem? selectedStudent;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RemoveFromCheckoutCommand))]
-    private Equipment? selectedCheckoutItem;
+    private EquipmentItem? selectedCheckoutItem;
 
     [ObservableProperty]
     private DateTimeOffset? expectedReturnDate = DateTimeOffset.Now.AddDays(7);
 
-    // UC-02: show only items that are currently available.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(EmptyMessage))]
     private bool showAvailableOnly;
@@ -49,8 +46,7 @@ public partial class EquipmentViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsEmpty))]
     private bool isLoading;
 
-    // A failed LOAD, shown with Retry. Separate from StatusMessage (borrow/checkout outcomes)
-    // so "database error" can never be confused with "no equipment".
+    // A failed LOAD, shown with Retry. Separate from StatusMessage so an error is never mistaken for "no equipment".
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasLoadError))]
     [NotifyPropertyChangedFor(nameof(IsEmpty))]
@@ -68,18 +64,21 @@ public partial class EquipmentViewModel : ObservableObject
         ? "No equipment is currently available."
         : "No equipment has been registered yet.";
 
-    public EquipmentViewModel(IServiceScopeFactory scopeFactory)
+    public EquipmentViewModel(IEquipmentApi api)
     {
-        _scopeFactory = scopeFactory;
+        _api = api;
     }
 
-    // Changing the filter re-queries the database; the filter is not applied in memory.
+    // Changing the filter re-queries the API; the filter is not applied in memory.
     partial void OnShowAvailableOnlyChanged(bool value) => _ = LoadAsync();
 
     [RelayCommand]
     private async Task LoadAsync()
     {
-        // Remember the selections, so a refresh does not make staff pick everything again.
+        // A newer load supersedes an older one; the older one must never overwrite the screen.
+        _loadCts?.Cancel();
+        var cts = _loadCts = new CancellationTokenSource();
+
         var studentId = SelectedStudent?.Id;
         var equipmentId = SelectedEquipment?.Id;
 
@@ -88,29 +87,34 @@ public partial class EquipmentViewModel : ObservableObject
 
         try
         {
-            // A fresh scope means a fresh DbContext, so this always sees the latest committed data.
-            await using var scope = _scopeFactory.CreateAsyncScope();
-            var findEquipment = scope.ServiceProvider.GetRequiredService<FindEquipmentService>();
-            var findStudents = scope.ServiceProvider.GetRequiredService<FindStudentsService>();
+            var equipment = await _api.GetEquipmentAsync(ShowAvailableOnly, cts.Token);
+            var studentsResult = await _api.GetStudentsAsync(null, cts.Token);
 
-            var equipmentFound = await findEquipment.ExecuteAsync(searchText: null, availableOnly: ShowAvailableOnly);
-            var studentsFound = await findStudents.ExecuteAsync(searchText: null);
+            if (cts.IsCancellationRequested)
+                return;
 
-            EquipmentList = new ObservableCollection<Equipment>(equipmentFound);
-            Students = new ObservableCollection<Student>(studentsFound);
+            if (!equipment.IsSuccess || !studentsResult.IsSuccess)
+            {
+                // Never leave stale availability on screen as if it were current.
+                EquipmentList = new ObservableCollection<EquipmentItem>();
+                LoadError = !equipment.IsSuccess ? equipment.Message : studentsResult.Message;
+                return;
+            }
+
+            EquipmentList = new ObservableCollection<EquipmentItem>(equipment.Value!.Select(e => e.ToItem()));
+            Students = new ObservableCollection<StudentItem>(studentsResult.Value!.Select(s => s.ToItem()));
 
             SelectedEquipment = EquipmentList.FirstOrDefault(e => e.Id == equipmentId);
             SelectedStudent = Students.FirstOrDefault(s => s.Id == studentId);
         }
-        catch (DatabaseAccessException ex)
+        catch (OperationCanceledException)
         {
-            // Never leave stale availability on screen as if it were current.
-            EquipmentList = new ObservableCollection<Equipment>();
-            LoadError = ex.Message;
+            // superseded by a newer load
         }
         finally
         {
-            IsLoading = false;
+            if (ReferenceEquals(_loadCts, cts))
+                IsLoading = false;
         }
     }
 
@@ -121,32 +125,24 @@ public partial class EquipmentViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanBorrow))]
     private async Task BorrowAsync()
     {
-        // Presentation validation only: is every input present?
-        if (SelectedStudent is null)
-        {
-            Show("Please select a student.", isError: true);
-            return;
-        }
-
-        if (SelectedEquipment is null)
-        {
-            Show("Please select equipment.", isError: true);
-            return;
-        }
-
-        if (ExpectedReturnDate is null)
-        {
-            Show("Please select a return date.", isError: true);
-            return;
-        }
+        // Presentation validation only: is every input present? Business rules live in the API.
+        if (SelectedStudent is null) { Show("Please select a student.", isError: true); return; }
+        if (SelectedEquipment is null) { Show("Please select equipment.", isError: true); return; }
+        if (ExpectedReturnDate is null) { Show("Please select a return date.", isError: true); return; }
 
         var expectedReturn = DateOnly.FromDateTime(ExpectedReturnDate.Value.DateTime);
+        var student = SelectedStudent;
+        var item = SelectedEquipment;
 
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var service = scope.ServiceProvider.GetRequiredService<BorrowEquipmentService>();
-        var result = await service.ExecuteAsync(SelectedStudent.Id, SelectedEquipment.Id, expectedReturn);
+        var result = await _api.BorrowAsync(new BorrowRequest(student.Id, item.Id, expectedReturn));
 
-        await ShowOutcomeAsync(result.IsSuccess, result.Failure, result.Message, clearCheckout: false);
+        await ShowOutcomeAsync(
+            result.IsSuccess,
+            result.Failure,
+            result.IsSuccess
+                ? $"'{item.Name}' borrowed by {student.Name}. Due {expectedReturn:yyyy-MM-dd}."
+                : result.Message,
+            clearCheckout: false);
     }
 
     // ---------- UC-06: several items at once ----------
@@ -184,36 +180,27 @@ public partial class EquipmentViewModel : ObservableObject
     [RelayCommand]
     private async Task CheckOutAsync()
     {
-        if (SelectedStudent is null)
-        {
-            Show("Please select a student.", isError: true);
-            return;
-        }
-
-        if (ExpectedReturnDate is null)
-        {
-            Show("Please select a return date.", isError: true);
-            return;
-        }
-
-        if (CheckoutItems.Count == 0)
-        {
-            Show("Add items to the checkout list first.", isError: true);
-            return;
-        }
+        if (SelectedStudent is null) { Show("Please select a student.", isError: true); return; }
+        if (ExpectedReturnDate is null) { Show("Please select a return date.", isError: true); return; }
+        if (CheckoutItems.Count == 0) { Show("Add items to the checkout list first.", isError: true); return; }
 
         var expectedReturn = DateOnly.FromDateTime(ExpectedReturnDate.Value.DateTime);
         var equipmentIds = CheckoutItems.Select(item => item.Id).ToList();
+        var studentName = SelectedStudent.Name;
 
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var service = scope.ServiceProvider.GetRequiredService<CheckOutMultipleEquipmentService>();
-        var result = await service.ExecuteAsync(SelectedStudent.Id, equipmentIds, expectedReturn);
+        var result = await _api.CheckoutAsync(new CheckoutRequest(SelectedStudent.Id, equipmentIds, expectedReturn));
 
-        await ShowOutcomeAsync(result.IsSuccess, result.Failure, result.Message, clearCheckout: true);
+        await ShowOutcomeAsync(
+            result.IsSuccess,
+            result.Failure,
+            result.IsSuccess
+                ? $"{result.Value!.Borrowings.Count} item(s) checked out for {studentName}. Due {expectedReturn:yyyy-MM-dd}."
+                : result.Message,
+            clearCheckout: true);
     }
 
     // One place decides what each outcome means for the screen.
-    private async Task ShowOutcomeAsync(bool success, OperationFailure failure, string message, bool clearCheckout)
+    private async Task ShowOutcomeAsync(bool success, ApiFailure failure, string message, bool clearCheckout)
     {
         if (success)
         {
@@ -225,11 +212,11 @@ public partial class EquipmentViewModel : ObservableObject
             return;
         }
 
-        // A plain input mistake needs no refresh. Everything else (rule rejection, stale data,
-        // conflict, database failure, unknown outcome) means the screen may be out of date, so
-        // refresh first (BR-18: reconnect and refresh before a staff decision), then show the
-        // reason. Nothing is retried automatically. The checkout list is kept so staff can adjust it.
-        if (failure != OperationFailure.Validation)
+        // A plain input mistake needs no refresh. Everything else (rule rejection, stale data, conflict,
+        // server failure, unreachable, unknown outcome) means the screen may be out of date, so refresh
+        // first (BR-18), then show the reason. Nothing is retried automatically.
+        // The checkout list is kept so staff can adjust it.
+        if (failure != ApiFailure.Validation)
             await LoadAsync();
 
         Show(message, isError: true);

@@ -1,14 +1,12 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EquipmentBorrowing.Application.Exceptions;
-using EquipmentBorrowing.Application.Interfaces;
-using Microsoft.Extensions.DependencyInjection;
+using EquipmentBorrowing.Desktop.Api;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
 public partial class MainWindowViewModel : ObservableObject
 {
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IEquipmentApi _api;
 
     public EquipmentViewModel EquipmentViewModel { get; }
     public BorrowingsViewModel BorrowingsViewModel { get; }
@@ -39,7 +37,7 @@ public partial class MainWindowViewModel : ObservableObject
         EquipmentManagementViewModel equipmentManagementViewModel,
         HistoryViewModel historyViewModel,
         BorrowingSearchViewModel borrowingSearchViewModel,
-        IServiceScopeFactory scopeFactory)
+        IEquipmentApi api)
     {
         EquipmentViewModel = equipmentViewModel;
         BorrowingsViewModel = borrowingsViewModel;
@@ -47,7 +45,7 @@ public partial class MainWindowViewModel : ObservableObject
         EquipmentManagementViewModel = equipmentManagementViewModel;
         HistoryViewModel = historyViewModel;
         BorrowingSearchViewModel = borrowingSearchViewModel;
-        _scopeFactory = scopeFactory;
+        _api = api;
         currentViewModel = equipmentViewModel;
     }
 
@@ -96,6 +94,7 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private Task RetryStartupAsync() => InitializeAsync();
 
+    // Startup only checks that the API (and, through it, the database) answers. One GET, no DB code here.
     public async Task InitializeAsync()
     {
         IsStarting = true;
@@ -103,18 +102,15 @@ public partial class MainWindowViewModel : ObservableObject
 
         try
         {
-            await using (var scope = _scopeFactory.CreateAsyncScope())
+            var probe = await _api.GetEquipmentAsync(availableOnly: false);
+            if (!probe.IsSuccess)
             {
-                var initializer = scope.ServiceProvider.GetRequiredService<IDatabaseInitializer>();
-                await initializer.InitializeAsync();
+                StartupError = probe.Message; // already says "cannot reach" vs "service reported an error"
+                return;
             }
 
             IsStarting = false;
             await ShowEquipmentAsync();
-        }
-        catch (DatabaseAccessException ex)
-        {
-            StartupError = ex.Message; // safe by contract: no credentials (BR-18)
         }
         catch (Exception)
         {

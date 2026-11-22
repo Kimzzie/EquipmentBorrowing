@@ -1,20 +1,17 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EquipmentBorrowing.Application.Dtos;
-using EquipmentBorrowing.Application.Services;
+using EquipmentBorrowing.Desktop.Api;
 using EquipmentBorrowing.Desktop.Models;
-using EquipmentBorrowing.Domain;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
-public sealed record StatusOption(string Label, BorrowingStatus? Value)
+public sealed record StatusOption(string Label, string Value)
 {
     public override string ToString() => Label;
 }
 
-public sealed record SortOption(string Label, BorrowingSortField Field, bool Descending)
+public sealed record SortOption(string Label, string Field, bool Descending)
 {
     public override string ToString() => Label;
 }
@@ -23,20 +20,20 @@ public partial class BorrowingSearchViewModel : ObservableObject
 {
     private static readonly StatusOption[] StatusChoices =
     [
-        new("All statuses", null),
-        new("Active", BorrowingStatus.Active),
-        new("Returned", BorrowingStatus.Returned)
+        new("All statuses", "All"),
+        new("Active", "Active"),
+        new("Returned", "Returned")
     ];
 
     private static readonly SortOption[] SortChoices =
     [
-        new("Checkout date: newest first", BorrowingSortField.DateBorrowed, true),
-        new("Checkout date: oldest first", BorrowingSortField.DateBorrowed, false),
-        new("Expected return: latest first", BorrowingSortField.ExpectedReturnDate, true),
-        new("Expected return: earliest first", BorrowingSortField.ExpectedReturnDate, false)
+        new("Checkout date: newest first", "borrowedDate", true),
+        new("Checkout date: oldest first", "borrowedDate", false),
+        new("Expected return: latest first", "expectedReturnDate", true),
+        new("Expected return: earliest first", "expectedReturnDate", false)
     ];
 
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IEquipmentApi _api;
     private CancellationTokenSource? _cts;
 
     public IReadOnlyList<StatusOption> StatusOptions => StatusChoices;
@@ -75,9 +72,9 @@ public partial class BorrowingSearchViewModel : ObservableObject
     public bool IsEmpty => HasSearched && !IsLoading && !HasError && Rows.Count == 0;
     public string ResultSummary => $"{Rows.Count} record(s) found";
 
-    public BorrowingSearchViewModel(IServiceScopeFactory scopeFactory)
+    public BorrowingSearchViewModel(IEquipmentApi api)
     {
-        _scopeFactory = scopeFactory;
+        _api = api;
     }
 
     // Runs when the screen opens, and when Search or Retry is pressed.
@@ -90,13 +87,12 @@ public partial class BorrowingSearchViewModel : ObservableObject
         IsLoading = true;
         ErrorMessage = null;
 
-        var query = new BorrowingQuery(SearchText, SelectedStatus.Value, SelectedSort.Field, SelectedSort.Descending);
+        var direction = SelectedSort.Descending ? "desc" : "asc";
 
         try
         {
-            await using var scope = _scopeFactory.CreateAsyncScope();
-            var service = scope.ServiceProvider.GetRequiredService<SearchBorrowingsService>();
-            var result = await service.ExecuteAsync(query, cts.Token);
+            var result = await _api.SearchBorrowingsAsync(
+                SearchText, SelectedStatus.Value, SelectedSort.Field, direction, cts.Token);
 
             if (cts.IsCancellationRequested)
                 return;

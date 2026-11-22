@@ -1,14 +1,17 @@
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using EquipmentBorrowing.Application.Services;
+using EquipmentBorrowing.Desktop.Api;
 using EquipmentBorrowing.Desktop.ViewModels;
-using EquipmentBorrowing.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EquipmentBorrowing.Desktop;
 
 public partial class App : Avalonia.Application
 {
+    // The API location is configuration, not code: set EQUIPMENT_BORROWING_API_URL to point elsewhere.
+    private const string ApiUrlVariable = "EQUIPMENT_BORROWING_API_URL";
+    private const string DefaultApiUrl = "http://localhost:5080/";
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -16,27 +19,21 @@ public partial class App : Avalonia.Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        var baseUrl = Environment.GetEnvironmentVariable(ApiUrlVariable);
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            baseUrl = DefaultApiUrl;
+        if (!baseUrl.EndsWith('/'))
+            baseUrl += "/"; // relative request paths only resolve correctly against a trailing slash
+
         var services = new ServiceCollection();
 
-        services.AddSingleton(TimeProvider.System);
-        services.AddInfrastructure();
-
-        // Application services: scoped, so each one shares the DbContext of its scope.
-        services.AddScoped<CheckoutProcessor>();
-        services.AddScoped<BorrowEquipmentService>();
-        services.AddScoped<CheckOutMultipleEquipmentService>();
-        services.AddScoped<ReturnEquipmentService>();
-        services.AddScoped<ViewActiveBorrowingsService>();
-        services.AddScoped<FindStudentsService>();
-        services.AddScoped<RegisterStudentService>();
-        services.AddScoped<UpdateStudentService>();
-        services.AddScoped<ChangeStudentEligibilityService>();
-        services.AddScoped<FindEquipmentService>();
-        services.AddScoped<RegisterEquipmentService>();
-        services.AddScoped<UpdateEquipmentService>();
-        services.AddScoped<ViewStudentHistoryService>();
-        services.AddScoped<ViewEquipmentHistoryService>();
-        services.AddScoped<SearchBorrowingsService>();
+        // One HttpClient for the app's lifetime (creating one per call exhausts sockets).
+        services.AddSingleton(new HttpClient
+        {
+            BaseAddress = new Uri(baseUrl),
+            Timeout = TimeSpan.FromSeconds(15)
+        });
+        services.AddSingleton<IEquipmentApi, EquipmentApiClient>();
 
         services.AddTransient<EquipmentViewModel>();
         services.AddTransient<BorrowingsViewModel>();

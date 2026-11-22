@@ -1,32 +1,29 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EquipmentBorrowing.Application.Dtos;
-using EquipmentBorrowing.Application.Exceptions;
-using EquipmentBorrowing.Application.Services;
-using EquipmentBorrowing.Domain;
-using Microsoft.Extensions.DependencyInjection;
+using EquipmentBorrowing.Desktop.Api;
+using EquipmentBorrowing.Desktop.Models;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
 public partial class HistoryViewModel : ObservableObject
 {
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IEquipmentApi _api;
 
     public HistoryPanelViewModel StudentPanel { get; }
     public HistoryPanelViewModel EquipmentPanel { get; }
 
     [ObservableProperty]
-    private ObservableCollection<Student> students = new();
+    private ObservableCollection<StudentItem> students = new();
 
     [ObservableProperty]
-    private ObservableCollection<Equipment> equipmentItems = new();
+    private ObservableCollection<EquipmentItem> equipmentItems = new();
 
     [ObservableProperty]
-    private Student? selectedStudent;
+    private StudentItem? selectedStudent;
 
     [ObservableProperty]
-    private Equipment? selectedEquipmentItem;
+    private EquipmentItem? selectedEquipmentItem;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasListError))]
@@ -34,9 +31,9 @@ public partial class HistoryViewModel : ObservableObject
 
     public bool HasListError => ListError is not null;
 
-    public HistoryViewModel(IServiceScopeFactory scopeFactory)
+    public HistoryViewModel(IEquipmentApi api)
     {
-        _scopeFactory = scopeFactory;
+        _api = api;
 
         StudentPanel = new HistoryPanelViewModel(
             LoadStudentHistoryAsync, "Select a student to see their borrowing history.");
@@ -45,9 +42,9 @@ public partial class HistoryViewModel : ObservableObject
     }
 
     // Selecting someone starts the (cancellable) async load. The panel handles all states.
-    partial void OnSelectedStudentChanged(Student? value) => _ = StudentPanel.LoadAsync(value?.Id);
+    partial void OnSelectedStudentChanged(StudentItem? value) => _ = StudentPanel.LoadAsync(value?.Id);
 
-    partial void OnSelectedEquipmentItemChanged(Equipment? value) => _ = EquipmentPanel.LoadAsync(value?.Id);
+    partial void OnSelectedEquipmentItemChanged(EquipmentItem? value) => _ = EquipmentPanel.LoadAsync(value?.Id);
 
     [RelayCommand]
     private async Task LoadAsync()
@@ -55,40 +52,47 @@ public partial class HistoryViewModel : ObservableObject
         var studentId = SelectedStudent?.Id;
         var equipmentId = SelectedEquipmentItem?.Id;
 
-        try
+        var studentsFound = await _api.GetStudentsAsync(null);
+        var equipmentFound = await _api.GetEquipmentAsync(availableOnly: false);
+
+        if (!studentsFound.IsSuccess || !equipmentFound.IsSuccess)
         {
-            await using var scope = _scopeFactory.CreateAsyncScope();
-            var findStudents = scope.ServiceProvider.GetRequiredService<FindStudentsService>();
-            var findEquipment = scope.ServiceProvider.GetRequiredService<FindEquipmentService>();
-
-            var studentsFound = await findStudents.ExecuteAsync(searchText: null);
-            var equipmentFound = await findEquipment.ExecuteAsync(searchText: null, availableOnly: false);
-
-            ListError = null;
-            Students = new ObservableCollection<Student>(studentsFound);
-            EquipmentItems = new ObservableCollection<Equipment>(equipmentFound);
-
-            // Restore by Id. A selection that no longer exists simply clears (stale selection).
-            SelectedStudent = Students.FirstOrDefault(s => s.Id == studentId);
-            SelectedEquipmentItem = EquipmentItems.FirstOrDefault(e => e.Id == equipmentId);
+            ListError = !studentsFound.IsSuccess ? studentsFound.Message : equipmentFound.Message;
+            return;
         }
-        catch (DatabaseAccessException ex)
-        {
-            ListError = ex.Message;
-        }
+
+        ListError = null;
+        Students = new ObservableCollection<StudentItem>(studentsFound.Value!.Select(s => s.ToItem()));
+        EquipmentItems = new ObservableCollection<EquipmentItem>(equipmentFound.Value!.Select(e => e.ToItem()));
+
+        // Restore by Id. A selection that no longer exists simply clears (stale selection).
+        SelectedStudent = Students.FirstOrDefault(s => s.Id == studentId);
+        SelectedEquipmentItem = EquipmentItems.FirstOrDefault(e => e.Id == equipmentId);
     }
 
-    private async Task<OperationResult<BorrowingHistory>> LoadStudentHistoryAsync(int id, CancellationToken ct)
+    private async Task<ApiResult<HistoryData>> LoadStudentHistoryAsync(int id, CancellationToken ct)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var service = scope.ServiceProvider.GetRequiredService<ViewStudentHistoryService>();
-        return await service.ExecuteAsync(id, ct);
+        var result = await _api.GetStudentBorrowingsAsync(id, ct);
+        if (!result.IsSuccess)
+            return ApiResult<HistoryData>.Fail(result.Failure, result.Code, result.Message);
+
+        var student = Students.FirstOrDefault(s => s.Id == id);
+        return ApiResult<HistoryData>.Ok(new HistoryData(
+            student?.Name ?? $"Student #{id}",
+            $"{student?.StudentNumber} · {result.Value!.Count} record(s)",
+            result.Value!));
     }
 
-    private async Task<OperationResult<BorrowingHistory>> LoadEquipmentHistoryAsync(int id, CancellationToken ct)
+    private async Task<ApiResult<HistoryData>> LoadEquipmentHistoryAsync(int id, CancellationToken ct)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var service = scope.ServiceProvider.GetRequiredService<ViewEquipmentHistoryService>();
-        return await service.ExecuteAsync(id, ct);
+        var result = await _api.GetEquipmentBorrowingsAsync(id, ct);
+        if (!result.IsSuccess)
+            return ApiResult<HistoryData>.Fail(result.Failure, result.Code, result.Message);
+
+        var item = EquipmentItems.FirstOrDefault(e => e.Id == id);
+        return ApiResult<HistoryData>.Ok(new HistoryData(
+            item?.Name ?? $"Equipment #{id}",
+            $"{item?.EquipmentCode} · {result.Value!.Count} record(s)",
+            result.Value!));
     }
 }

@@ -1,15 +1,14 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EquipmentBorrowing.Application.Dtos;
-using EquipmentBorrowing.Application.Services;
+using EquipmentBorrowing.Desktop.Api;
 using EquipmentBorrowing.Desktop.Models;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
 public partial class HistoryPanelViewModel : ObservableObject
 {
-    private readonly Func<int, CancellationToken, Task<OperationResult<BorrowingHistory>>> _loader;
+    private readonly Func<int, CancellationToken, Task<ApiResult<HistoryData>>> _loader;
     private CancellationTokenSource? _cts;
     private int? _currentId;
 
@@ -49,7 +48,7 @@ public partial class HistoryPanelViewModel : ObservableObject
     public bool IsEmpty => HasSelection && !IsLoading && !HasError && Rows.Count == 0;
 
     public HistoryPanelViewModel(
-        Func<int, CancellationToken, Task<OperationResult<BorrowingHistory>>> loader,
+        Func<int, CancellationToken, Task<ApiResult<HistoryData>>> loader,
         string prompt)
     {
         _loader = loader;
