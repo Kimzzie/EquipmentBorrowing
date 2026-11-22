@@ -1,0 +1,37 @@
+(Copied verbatim from the PowerShell console after the T07 desktop session and the independent PATCH on 2026-11-21 14:02. It was not saved by a script at the time.)
+
+Database: equipment_borrowing_lab5_test
+
+-- Students
+Id | StudentNumber | Name | Contact | IsAllowedToBorrow
+1 | ST-100 | Ada Cruz | NULL | True
+2 | ST-200 | Ben Diaz | NULL | False
+3 | ST-300 | Cara Lim | NULL | True
+4 | ST-400 | Dani Ong | NULL | False
+5 | ST-500 | Jensen Juang | NULL | True
+(5 rows)
+
+-- Equipment
+Id | EquipmentCode | Name | Description | IsAvailable
+1 | EQ-001 | Camera | NULL | False
+2 | EQ-002 | Laptop | NULL | True
+3 | EQ-003 | Projector | NULL | True
+4 | EQ-004 | Tablet | NULL | False
+5 | EQ-005 | Microphone | NULL | False
+6 | EQ-006 | Tripod | NULL | True
+7 | EQ-007 | Speaker | NULL | True
+8 | EQ-008 | Crimping Tool | NULL | True
+(8 rows)
+
+-- Borrowings
+Id | StudentNumber | EquipmentCode | DateBorrowed | ExpectedReturnDate | DateReturned | Status
+1 | ST-100 | EQ-001 | 2026-11-01 | 2026-11-09 | NULL | Active
+2 | ST-100 | EQ-003 | 2026-11-02 | 2026-11-12 | 2026-11-08 | Returned
+3 | ST-300 | EQ-004 | 2026-11-03 | 2026-11-12 | NULL | Active
+4 | ST-300 | EQ-005 | 2026-11-03 | 2026-11-12 | NULL | Active
+5 | ST-400 | EQ-002 | 2026-11-10 | 2026-11-29 | 2026-11-10 | Returned
+(5 rows)
+
+-- Consistency check (must be 0 rows)
+EquipmentCode | IsAvailable | ActiveBorrowings
+(0 rows)

@@ -1,0 +1,59 @@
+T08 console captures. Copied verbatim from the PowerShell console on 2026-11-21 (Asia/Manila).
+No credentials appear in any of these captures.
+
+=== Step 1: API stopped (no HTTP response) ~14:06 ===
+PS> try { Invoke-WebRequest http://localhost:5080/api/v1/students -UseBasicParsing } catch { $_.Exception.GetType().FullName; $_.Exception.Message }
+System.Net.Http.HttpRequestException
+No connection could be made because the target machine actively refused it. (localhost:5080)
+
+=== Step 2: API running, database login rejected (a received 500) ~14:07 ===
+PS> try { Invoke-WebRequest http://localhost:5080/api/v1/students -UseBasicParsing } catch { [int]$_.Exception.Response.StatusCode; $_.ErrorDetails.Message }
+500
+
+{
+  "code": "database_error",
+  "message": "PostgreSQL rejected the login. Check the username and password in your local connection settings."
+}
+
+=== Step 3: configuration restored ~14:11 ===
+PS> Invoke-WebRequest http://localhost:5080/api/v1/students -UseBasicParsing | Select-Object StatusCode
+StatusCode
+----------
+       200
+
+=== Step 3b: write, restart the API, read back ~14:15 ===
+PS> Invoke-RestMethod -Method Post -Uri http://localhost:5080/api/v1/borrowings -ContentType 'application/json' -Body '{"studentId":4,"equipmentId":2,"expectedReturnDate":"2026-11-12"}'
+
+id                 : 5
+studentId          : 4
+studentNumber      : ST-400
+studentName        : Dani Ong
+equipmentId        : 2
+equipmentCode      : EQ-002
+equipmentName      : Laptop
+borrowedDate       : 2026-11-10
+expectedReturnDate : 2026-11-12
+returnedDate       :
+status             : Active
+
+(API stopped and started again here)
+
+PS> Invoke-RestMethod http://localhost:5080/api/v1/borrowings?status=Active | Format-Table id, studentNumber, equipmentCode, status
+
+id studentNumber equipmentCode status
+-- ------------- ------------- ------
+ 1 ST-100        EQ-001        Active
+ 3 ST-300        EQ-004        Active
+ 4 ST-300        EQ-005        Active
+ 5 ST-400        EQ-002        Active
+
+=== Step 4: unknown commit outcome (EQUIPMENT_BORROWING_FAULT=AfterCommit) ~14:20 ===
+PS> try { Invoke-WebRequest -Method Post -Uri http://localhost:5080/api/v1/borrowings -ContentType 'application/json' -Body '{"studentId":1,"equipmentId":6,"expectedReturnDate":"2026-11-12"}' -UseBasicParsing } catch { [int]$_.Exception.Response.StatusCode; $_.ErrorDetails.Message }
+500
+
+{
+  "code": "commit_outcome_unknown",
+  "message": "SIMULATED: the connection was lost right after COMMIT was sent, so it is not known whether the change was saved. Nothing was retried. Refresh and check the records before trying again."
+}
+
+(Fresh database read afterwards: see T08-snapshot-after-unknown-commit.txt, borrowing 6 is persisted.)

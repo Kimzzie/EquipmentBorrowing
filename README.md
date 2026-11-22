@@ -2,11 +2,13 @@
 
 A desktop application for laboratory staff to register students and equipment, issue and return equipment (one item or several at once), and review borrowing history. Built with C# / .NET 10, Avalonia UI (MVVM with CommunityToolkit.Mvvm), EF Core and PostgreSQL.
 
-**Authors:** Kmberly Bautista, 2023303116
+**Authors:** Kimberly Bautista, 2023303116
 
 ## Lab 4 summary
 
 Lab 4 moved the system from SQLite to PostgreSQL and added student and equipment management, atomic multi-item checkout, history views and borrowing search. Sections 1 to 8 below describe the current (Lab 4) system. The Lab 1 to 3 write-ups are preserved unchanged under **Earlier labs** at the end.
+
+> **Lab 5 update:** the desktop no longer touches the database. It talks to a new REST API (`src/EquipmentBorrowing.Api`) over HTTP, and the API is the only process that uses PostgreSQL. Sections 1 to 8 below describe the Lab 4 system; where Lab 5 changed how you run it (no migration or seeding at desktop startup, the API must be running first), read **Laboratory Activity 5** near the end of this file first.
 
 ## 1. Prerequisites
 
@@ -153,6 +155,131 @@ Remove-Item Env:EQUIPMENT_BORROWING_CONNECTION
 - `docs/traceability.md`: use cases mapped to implementation and acceptance IDs
 - `docs/evidence.md`: expected versus observed results, A01 to A19
 - `docs/database-diagram.png`, `docs/database-queries.sql`: from earlier labs
+
+---
+
+# Laboratory Activity 5: API integration and acceptance testing
+
+**Author:** Kimberly Bautista, 2023303116 (individual). Tag: `lab5-submitted`. Lab 4 baseline: tag `lab4-submitted` (commit `d23dd40`); see `docs/baseline-record.md`.
+
+Lab 5 splits the system into two processes. The new **API** (`src/EquipmentBorrowing.Api`, ASP.NET Core controllers) exposes the Lab 4 use cases as a REST service under `/api/v1`. The **desktop** is now only an HTTP client. The Lab 4 business rules (BR-01 to BR-19) were not rewritten: the API calls the same Application services.
+
+```text
+Avalonia View -> ViewModel -> IEquipmentApi / EquipmentApiClient (HttpClient)
+                                      | HTTP, JSON
+                                      v
+                  Api (controllers, error mapping, OpenAPI)
+                                      v
+                  Application services (use cases, business rules)
+                                      v
+                  Repository interfaces -> Infrastructure (EF Core, Npgsql) -> PostgreSQL
+```
+
+| Project | Lab 5 responsibility |
+|---|---|
+| `Desktop` | Views, view models, `Api/EquipmentApiClient.cs`. No project references and no database packages. |
+| `Api` | Controllers `Students`, `Equipment`, `Borrowings`, `CheckoutRequests`; DTO contracts; maps application results to HTTP status and `{code,message}`; OpenAPI document. |
+| `Application`, `Domain` | Business rules and use cases, unchanged apart from three small read services (`Get*Service`) and one query method. |
+| `Infrastructure` | EF Core, Npgsql, migrations, repositories. Used only by the API (and the test-data tool). |
+| `tools/EquipmentBorrowing.TestData` | `reset` and `snapshot` commands for the disposable test database. |
+
+## Setup
+
+1. Prerequisites as in section 1 (.NET 10 SDK, PostgreSQL 16 or newer, `dotnet-ef`, Git).
+2. Create the databases. The role must **own** the database, otherwise PostgreSQL 15 and newer refuse to create tables in the `public` schema:
+
+```sql
+CREATE ROLE equipment_app LOGIN PASSWORD '<choose-a-password>';
+CREATE DATABASE equipment_borrowing          OWNER equipment_app;
+CREATE DATABASE equipment_borrowing_lab5_test OWNER equipment_app;  -- disposable: acceptance tests only
+```
+
+3. Configure the connection (never committed). The API and the tools read `EQUIPMENT_BORROWING_CONNECTION` first, then the git-ignored `appsettings.Local.json` in the solution folder (copy `appsettings.Local.example.json` and replace `<your-password>`; the file is found by walking up from the app folder). For one PowerShell window, use single quotes:
+
+```powershell
+$env:EQUIPMENT_BORROWING_CONNECTION = 'Host=localhost;Port=5432;Database=equipment_borrowing;Username=equipment_app;Password=<your-password>'
+```
+
+   The variable only lives in the window where you set it, so set it again in every window that starts the API or a tool. Use a password that is not guessable from this repository (do not reuse a student number).
+
+4. Create the schema. Lab 5 added **no** migration (the only one is `InitialPostgreSql`), and the API does **not** migrate on startup:
+
+```powershell
+dotnet ef database update --project src\EquipmentBorrowing.Infrastructure
+```
+
+   A fresh database is empty (the Lab 4 startup seeding ran in the desktop and was removed). Register students and equipment through the app or the API, or use the test database below.
+
+## Run
+
+```powershell
+dotnet run --project src\EquipmentBorrowing.Api --launch-profile http     # API at http://localhost:5080
+dotnet run --project src\EquipmentBorrowing.Desktop                       # in a second window
+```
+
+- API base URL: `http://localhost:5080/` by default. The desktop reads `EQUIPMENT_BORROWING_API_URL` if you need another address. The desktop needs **no** database setting.
+- OpenAPI document: `http://localhost:5080/openapi/v1.json`.
+- Run one API at a time (port 5080), and stop it before `dotnet build`, because a running API locks its DLLs.
+
+### Endpoints (all under `/api/v1`)
+
+| ID | Method and route | Purpose | Success |
+|---|---|---|---|
+| API-01 | GET `/equipment?available=true` | List equipment | 200 |
+| API-02 | GET `/students?search=` | List students | 200 |
+| API-03 | GET `/students/{id}` | One student | 200 |
+| API-04 | POST `/students` | Register a student (starts eligible) | 201 + `Location` |
+| API-05 | PUT `/students/{id}` | Edit a student | 200 |
+| API-06 | PATCH `/students/{id}/eligibility` | Permit or restrict | 200 |
+| API-07 | GET `/equipment/{id}` | One item | 200 |
+| API-08 | POST `/equipment` | Register an item (starts available) | 201 + `Location` |
+| API-09 | PUT `/equipment/{id}` | Edit descriptive fields | 200 |
+| API-10 | POST `/borrowings` | Issue one item | 201 + `Location` |
+| API-11 | POST `/checkout-requests` | Issue two or more items, all or nothing | 201 |
+| API-12 | POST `/borrowings/{id}/return` | Return (the server sets the date) | 200 |
+| API-13 | GET `/borrowings/{id}` | One borrowing | 200 |
+| API-14 | GET `/borrowings?search=&status=&sort=&direction=` | Search, filter, sort | 200 |
+| API-15 | GET `/students/{id}/borrowings` | Student history | 200 |
+| API-16 | GET `/equipment/{id}/borrowings` | Item history | 200 |
+
+Errors always have the body `{ "code": "...", "message": "..." }`. Status mapping: 400 validation (`validation_failed`), 404 missing (`not_found`, `route_not_found`), 405 `method_not_allowed`, 409 business rule or duplicate (`rule_violation`, `duplicate`, `conflict`), 500 safe server failure (`database_error`, `commit_outcome_unknown`, `internal_error`). The body never contains credentials, connection strings or stack traces.
+
+## Key design decisions
+
+- **Dependency direction.** The desktop depends on nothing but HTTP; the API depends on Application and Infrastructure. `docs/acceptance/Check-DesktopDependencies.ps1` proves the desktop has no project references, no database packages and no database assemblies in its output.
+- **Unreachable versus server error.** An unreachable API produces no HTTP response, so the client reports "cannot reach the service". A reachable API that answers 500 is reported as a server error. The two are different messages and different code paths (`ApiResult` with an `ApiFailure`).
+- **Unknown commit outcome.** If the connection is lost after COMMIT was sent, the API answers 500 `commit_outcome_unknown`, never retries, and tells staff to refresh and check before trying again. A failure status is not proof of rollback.
+- **Writes are not cancelled by a client disconnect.** Write requests use `CancellationToken.None` so an abandoned request cannot abort a commit that is already running; reads use the request token.
+- **Atomic checkout.** Single and multi-item checkout and return run in one Serializable transaction with the rules re-checked inside it (unchanged from Lab 4).
+- **Server decides dates.** `expectedReturnDate` must be later than the server's local date; borrow and return dates are set by the server.
+
+## Acceptance tests (T01 to T08)
+
+The tests run against the **disposable** database only. `reset` and `snapshot` refuse any database whose name does not end in `_test`.
+
+```powershell
+# Window A: API with the fixed test clock (2026-11-10) against the test database
+$env:EQUIPMENT_BORROWING_CONNECTION = 'Host=localhost;Port=5432;Database=equipment_borrowing_lab5_test;Username=equipment_app;Password=<your-password>'
+dotnet run --project src\EquipmentBorrowing.Api --launch-profile http-test-clock
+
+# Window B: reset, run a test, read the database independently
+dotnet run --project tools\EquipmentBorrowing.TestData -- reset
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass     # this window only, if scripts are blocked
+.\docs\acceptance\Invoke-Acceptance.ps1 -Test T01             # T01 .. T06, T05-fault, AfterRestart
+dotnet run --project tools\EquipmentBorrowing.TestData -- snapshot
+```
+
+- `T05-fault` needs the API started with `$env:EQUIPMENT_BORROWING_FAULT = 'BeforeCommit'`; the unknown-commit check in T08 uses `'AfterCommit'`. Remove the variable afterwards (`Remove-Item Env:EQUIPMENT_BORROWING_FAULT`) and restart the API. The fault switch refuses to act unless the database name ends in `_test`.
+- `AfterRestart` is run after stopping and restarting the API and compares the database with the snapshot saved by the last write test.
+- T07 (the desktop is an HTTP client) and T08 (unreachable API versus 500, recovery) combine the scripts with manual steps; the steps and what was observed are in `docs/acceptance/test-results.md`.
+
+## Lab 5 documents and evidence
+
+- `docs/acceptance/test-results.md`: the consolidated test record (T01 to T08, honest results, issues found and corrected).
+- `docs/evidence/lab5/`: the script-generated evidence files, `T07-*` and `T08-*` captures, and `screenshots/`.
+- `docs/lab5-traceability.md`: Lab 4 use cases mapped to endpoints, code and evidence.
+- `docs/baseline-record.md`: the Lab 4 baseline, the before and after boundary, and the justified refactoring.
+- `docs/acceptance/*.ps1`, `tools/EquipmentBorrowing.TestData`: the repeatable test tooling.
 
 ---
 
