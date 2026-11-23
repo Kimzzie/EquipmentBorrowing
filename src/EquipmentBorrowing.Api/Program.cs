@@ -32,6 +32,11 @@ builder.Services
     .ConfigureApiBehaviorOptions(options =>
     {
         options.InvalidModelStateResponseFactory = ApiResults.FromModelState;
+
+        // Without this, [ApiController] writes its own ProblemDetails body for client errors such as
+        // 415 (non-JSON body), so UseStatusCodePages below never gets to give them { code, message }.
+        // Found by TC6-E03 (defect D-1). Bodies we write ourselves (ApiResults.Error) are unaffected.
+        options.SuppressMapClientErrors = true;
     });
 
 builder.Services.AddOpenApi();          // serves /openapi/v1.json
