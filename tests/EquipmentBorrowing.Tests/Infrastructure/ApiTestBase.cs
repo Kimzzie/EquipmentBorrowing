@@ -1,4 +1,6 @@
+﻿using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using EquipmentBorrowing.Api.Contracts;
 
@@ -74,6 +76,21 @@ public abstract class ApiTestBase : IAsyncLifetime
             Content = JsonContent.Create(new { isEligible }, options: Json)
         };
         return Client.SendAsync(request);
+    }
+
+    /// <summary>
+    /// Sends a hand-written body exactly as given: malformed JSON, unknown fields, wrong types
+    /// and wrong content types cannot be produced from typed objects.
+    /// </summary>
+    protected async Task<(HttpResponseMessage Response, string Body)> SendRawAsync(
+        HttpMethod method, string url, string? body = null, string contentType = "application/json")
+    {
+        var request = new HttpRequestMessage(method, url);
+        if (body is not null)
+            request.Content = new StringContent(body, Encoding.UTF8, contentType);
+
+        var response = await Client.SendAsync(request);
+        return (response, await response.Content.ReadAsStringAsync());
     }
 
     // ---- student / equipment management helpers (API-04, 05, 08, 09) ----
