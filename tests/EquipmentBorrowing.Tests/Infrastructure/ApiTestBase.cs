@@ -76,6 +76,21 @@ public abstract class ApiTestBase : IAsyncLifetime
         return Client.SendAsync(request);
     }
 
+    // ---- student / equipment management helpers (API-04, 05, 08, 09) ----
+    // Parameters are nullable on purpose so tests can send blank or null values.
+
+    protected Task<HttpResponseMessage> RegisterStudentAsync(string? studentNumber, string? fullName, string? contact = null) =>
+        Client.PostAsJsonAsync("/api/v1/students", new { studentNumber, fullName, contact }, Json);
+
+    protected Task<HttpResponseMessage> UpdateStudentAsync(int id, string? studentNumber, string? fullName, string? contact) =>
+        Client.PutAsJsonAsync($"/api/v1/students/{id}", new { studentNumber, fullName, contact }, Json);
+
+    protected Task<HttpResponseMessage> RegisterEquipmentAsync(string? equipmentCode, string? name, string? description = null) =>
+        Client.PostAsJsonAsync("/api/v1/equipment", new { equipmentCode, name, description }, Json);
+
+    protected Task<HttpResponseMessage> UpdateEquipmentAsync(int id, string? equipmentCode, string? name, string? description) =>
+        Client.PutAsJsonAsync($"/api/v1/equipment/{id}", new { equipmentCode, name, description }, Json);
+
     /// <summary>Resolves the id of the ACTIVE borrowing of an item through the API.</summary>
     protected async Task<int> ActiveBorrowingIdAsync(string equipmentCode)
     {
