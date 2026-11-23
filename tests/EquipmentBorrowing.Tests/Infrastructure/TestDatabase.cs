@@ -134,6 +134,27 @@ public static class TestDatabase
     public static Task<long> CountAsync(string table) =>
         ScalarAsync<long>($"SELECT COUNT(*) FROM \"{table}\"");
 
+    // Targeted fresh-connection readbacks (each opens its own new connection).
+
+    public static Task<bool> IsAvailableAsync(int equipmentId) => ScalarAsync<bool>(
+        "SELECT \"IsAvailable\" FROM \"Equipment\" WHERE \"Id\" = @id", ("id", equipmentId));
+
+    public static Task<bool> IsAllowedToBorrowAsync(int studentId) => ScalarAsync<bool>(
+        "SELECT \"IsAllowedToBorrow\" FROM \"Students\" WHERE \"Id\" = @id", ("id", studentId));
+
+    public static Task<string> BorrowingStatusAsync(int borrowingId) => ScalarAsync<string>(
+        "SELECT \"Status\" FROM \"Borrowings\" WHERE \"Id\" = @id", ("id", borrowingId));
+
+    /// <summary>The stored return date as yyyy-MM-dd text (only call for a returned borrowing).</summary>
+    public static Task<string> ReturnedDateAsync(int borrowingId) => ScalarAsync<string>(
+        "SELECT to_char(\"DateReturned\", 'YYYY-MM-DD') FROM \"Borrowings\" WHERE \"Id\" = @id", ("id", borrowingId));
+
+    public static Task<long> BorrowingCountForStudentAsync(int studentId) => ScalarAsync<long>(
+        "SELECT COUNT(*) FROM \"Borrowings\" WHERE \"StudentId\" = @id", ("id", studentId));
+
+    public static Task<long> ActiveCountForStudentAsync(int studentId) => ScalarAsync<long>(
+        "SELECT COUNT(*) FROM \"Borrowings\" WHERE \"StudentId\" = @id AND \"Status\" = 'Active'", ("id", studentId));
+
     /// <summary>Number of items whose availability disagrees with their active borrowings. Must be 0.</summary>
     public static Task<long> ConsistencyViolationsAsync() => ScalarAsync<long>("""
         SELECT COUNT(*) FROM (

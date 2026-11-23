@@ -47,6 +47,42 @@ public abstract class ApiTestBase : IAsyncLifetime
         Assert.DoesNotContain("Password", body, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>The machine-readable "code" of an error body, e.g. "rule_violation".</summary>
+    protected static string ErrorCode(string body)
+    {
+        using var doc = JsonDocument.Parse(body);
+        return doc.RootElement.GetProperty("code").GetString()!;
+    }
+
+    // ---- request helpers (API-10, API-11, API-12, API-06) ----
+
+    protected Task<HttpResponseMessage> BorrowAsync(int studentId, int equipmentId, DateOnly expected) =>
+        Client.PostAsJsonAsync("/api/v1/borrowings",
+            new { studentId, equipmentId, expectedReturnDate = Iso(expected) }, Json);
+
+    protected Task<HttpResponseMessage> CheckoutAsync(int studentId, IEnumerable<int> equipmentIds, DateOnly expected) =>
+        Client.PostAsJsonAsync("/api/v1/checkout-requests",
+            new { studentId, equipmentIds = equipmentIds.ToArray(), expectedReturnDate = Iso(expected) }, Json);
+
+    protected Task<HttpResponseMessage> ReturnAsync(int borrowingId) =>
+        Client.PostAsJsonAsync($"/api/v1/borrowings/{borrowingId}/return", new { }, Json);
+
+    protected Task<HttpResponseMessage> SetEligibilityAsync(int studentId, bool isEligible)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Patch, $"/api/v1/students/{studentId}/eligibility")
+        {
+            Content = JsonContent.Create(new { isEligible }, options: Json)
+        };
+        return Client.SendAsync(request);
+    }
+
+    /// <summary>Resolves the id of the ACTIVE borrowing of an item through the API.</summary>
+    protected async Task<int> ActiveBorrowingIdAsync(string equipmentCode)
+    {
+        var active = await Client.GetFromJsonAsync<List<BorrowingDto>>("/api/v1/borrowings?status=Active", Json);
+        return active!.Single(b => b.EquipmentCode == equipmentCode).Id;
+    }
+
     protected static async Task<T> ReadAsync<T>(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<T>(Json))!;
 
