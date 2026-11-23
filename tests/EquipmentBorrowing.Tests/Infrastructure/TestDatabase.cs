@@ -119,6 +119,18 @@ public static class TestDatabase
         return (T)Convert.ChangeType(result!, typeof(T));
     }
 
+    /// <summary>Runs one non-query statement on a fresh connection (test setup only).</summary>
+    public static async Task ExecuteAsync(string sql)
+    {
+        await using var connection = await OpenFreshConnectionAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>Empties all three tables so a test can check the "empty catalog" state.</summary>
+    public static Task ClearAllAsync() =>
+        ExecuteAsync("TRUNCATE TABLE \"Borrowings\", \"Equipment\", \"Students\" RESTART IDENTITY");
+
     public static Task<long> CountAsync(string table) =>
         ScalarAsync<long>($"SELECT COUNT(*) FROM \"{table}\"");
 

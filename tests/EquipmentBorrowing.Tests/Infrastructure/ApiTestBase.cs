@@ -35,6 +35,18 @@ public abstract class ApiTestBase : IAsyncLifetime
 
     protected static string Iso(DateOnly date) => date.ToString("yyyy-MM-dd");
 
+    /// <summary>The contract's error body is { "code": "...", "message": "..." } and leaks nothing.</summary>
+    protected static void AssertSafeError(string body)
+    {
+        using var doc = JsonDocument.Parse(body);
+        var root = doc.RootElement;
+
+        Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("code").GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("message").GetString()));
+        Assert.DoesNotContain("   at ", body);                                   // no stack trace
+        Assert.DoesNotContain("Password", body, StringComparison.OrdinalIgnoreCase);
+    }
+
     protected static async Task<T> ReadAsync<T>(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<T>(Json))!;
 
