@@ -149,6 +149,16 @@ public static class TestDatabase
     public static Task<string> ReturnedDateAsync(int borrowingId) => ScalarAsync<string>(
         "SELECT to_char(\"DateReturned\", 'YYYY-MM-DD') FROM \"Borrowings\" WHERE \"Id\" = @id", ("id", borrowingId));
 
+    /// <summary>
+    /// Last id handed out by the Borrowings identity sequence. Sequences are NOT transactional:
+    /// an INSERT that is later rolled back still advances this number. So "sequence went up but the row
+    /// count did not" is independent proof that a write was really sent to PostgreSQL and then undone.
+    /// </summary>
+    public static Task<long> BorrowingIdSequenceAsync() => ScalarAsync<long>("""
+        SELECT last_value FROM pg_sequences
+        WHERE sequencename = replace(split_part(pg_get_serial_sequence('"Borrowings"', 'Id'), '.', 2), '"', '')
+        """);
+
     public static Task<long> BorrowingCountForStudentAsync(int studentId) => ScalarAsync<long>(
         "SELECT COUNT(*) FROM \"Borrowings\" WHERE \"StudentId\" = @id", ("id", studentId));
 

@@ -22,8 +22,11 @@ public abstract class ApiTestBase : IAsyncLifetime
 
     protected ApiTestBase(ApiFactory factory)
     {
+        Factory = factory;
         Client = factory.CreateClient();
     }
+
+    protected ApiFactory Factory { get; }
 
     protected HttpClient Client { get; }
 
