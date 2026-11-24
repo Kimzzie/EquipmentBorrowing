@@ -26,4 +26,12 @@
     <ProjectReference Include="..\..\src\EquipmentBorrowing.Api\EquipmentBorrowing.Api.csproj" />
   </ItemGroup>
 
+  <!-- The REAL desktop HTTP client, compiled in unmodified (no Avalonia needed). TC6-E07 tests this exact code. -->
+  <ItemGroup>
+    <Compile Include="..\..\src\EquipmentBorrowing.Desktop\Api\ApiResult.cs" Link="DesktopClient\ApiResult.cs" />
+    <Compile Include="..\..\src\EquipmentBorrowing.Desktop\Api\ApiContracts.cs" Link="DesktopClient\ApiContracts.cs" />
+    <Compile Include="..\..\src\EquipmentBorrowing.Desktop\Api\IEquipmentApi.cs" Link="DesktopClient\IEquipmentApi.cs" />
+    <Compile Include="..\..\src\EquipmentBorrowing.Desktop\Api\EquipmentApiClient.cs" Link="DesktopClient\EquipmentApiClient.cs" />
+  </ItemGroup>
+
 </Project>

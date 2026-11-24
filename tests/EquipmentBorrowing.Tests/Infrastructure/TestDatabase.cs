@@ -94,6 +94,10 @@ public static class TestDatabase
         await context.SaveChangesAsync();
     }
 
+    /// <summary>A brand-new EF Core context (nothing cached, nothing shared with the API's contexts).</summary>
+    public static EquipmentBorrowingDbContext NewContext() => new(
+        new DbContextOptionsBuilder<EquipmentBorrowingDbContext>().UseNpgsql(ConnectionString).Options);
+
     // ---------------- fresh-connection readback ----------------
 
     /// <summary>
