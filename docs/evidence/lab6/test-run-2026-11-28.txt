@@ -1,7 +1,7 @@
 ﻿Lab 6 automated test run
 Date: 2026-11-28
 Command: dotnet test tests\EquipmentBorrowing.Tests --logger trx
-Commit: 9f7a434
+Commit: the one titled "test(lab6): add MA6-01/02 manual check record, OpenAPI and desktop-boundary tests, evidence" (last commit that changed code)
 dotnet SDK: 10.0.404
 Database: equipment_borrowing_test (fixed date D = 2026-11-10)
 Raw per-test results: lab6-final-trx.xml (a .trx file saved with an .xml extension because .trx files are git-ignored)

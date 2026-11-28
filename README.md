@@ -283,6 +283,103 @@ dotnet run --project tools\EquipmentBorrowing.TestData -- snapshot
 
 ---
 
+# Laboratory Activity 6: automated verification and regression testing
+
+Lab 6 adds automated checks for the system built in Labs 1 to 5. It adds no new business module. The Lab 4 use-case
+suite and the Lab 5 API reference stay authoritative. The tests live in one xUnit project, `tests/EquipmentBorrowing.Tests`.
+
+## What is tested
+
+- **22 automated scenarios** from the Lab 6 test case suite: `TC6-U01` to `U09` and `U12` to `U16` (use cases) and `TC6-E01` to `E08`
+  (edge cases and failures). Each test carries a trait such as `[Trait("TC6", "U01")]`.
+- **The real thing, not mocks.** API tests host the actual ASP.NET Core pipeline in-process with `WebApplicationFactory<Program>`
+  and talk to a real PostgreSQL test database. Constraint, persistence and transaction claims are always checked through a **fresh,
+  independent PostgreSQL connection** (pooling off), never through the API's own context.
+- **Two manual acceptance checks**, `MA6-01` (desktop responsiveness) and `MA6-02` (independent API and synchronization), recorded in `docs/lab6-manual-checks.md`.
+
+## Test setup (one time)
+
+1. Create the disposable database (the same one as in Lab 4). The tests apply the migrations themselves on the first reset.
+
+   ```sql
+   CREATE DATABASE equipment_borrowing_test OWNER equipment_app;   -- disposable: tests only
+   ```
+
+2. Point the tests at it for the current PowerShell window (single quotes, never committed):
+
+   ```powershell
+   $env:EQUIPMENT_BORROWING_CONNECTION = 'Host=localhost;Port=5432;Database=equipment_borrowing_test;Username=equipment_app;Password=<your-password>'
+   ```
+
+   **Safety:** the tests read **only** this variable. They never fall back to `appsettings.Local.json` (which might point at real data),
+   and they refuse to start unless the database name ends in `_test`, because every test wipes all rows. Do not use SQLite or EF Core InMemory
+   to check these behaviours; they cannot prove PostgreSQL constraints or rollback. No Docker or paid service is needed.
+
+## Run
+
+Close any API or desktop you started by hand first: a running API locks the build output.
+
+```powershell
+dotnet test tests\EquipmentBorrowing.Tests                       # everything (157 tests, about one minute)
+dotnet test tests\EquipmentBorrowing.Tests --filter "TC6=U09"    # one scenario
+dotnet test tests\EquipmentBorrowing.Tests --filter "TC6~E07"    # E07a, E07b and E07c together
+```
+
+Expected result on 2026-11-28: **157 executed, 157 passed, 0 failed.** 153 map to TC6 cases and 4 are `InfrastructureSmokeTests`
+that check the harness itself.
+
+## How the tests stay independent and repeatable
+
+- **Reset before every test.** `TestDatabase.ResetAsync()` truncates the tables (`RESTART IDENTITY`) and inserts the fixture S1 to S4 and E1 to E7.
+  No test depends on another, and the order does not matter.
+- **Fixed date D = 2026-11-10.** The test host sets `EQUIPMENT_BORROWING_FIXED_DATE`, so dates such as "returned on D" are deterministic.
+- **Serial execution.** All tests share one database and one process-wide fault switch, so parallelism is disabled for the assembly.
+- **IDs come from the API.** Tests resolve students and equipment through the HTTP API instead of hard-coding database keys.
+- **Failures are provoked on purpose.** `FaultScope` arms the existing `EQUIPMENT_BORROWING_FAULT` seam only for the length of one test:
+  `BeforeCommit` fails after the writes were sent (rollback, `E04`), `AfterCommit` commits and then loses the acknowledgement (unknown outcome, `E07c`).
+- **Restart check (`E08`).** `ApiProcess` runs the actual API as a separate process, stops it, starts it again and compares the records
+  and the database snapshot. This is the documented integration harness, so no manual restart is needed.
+- **The real desktop client is under test.** The unmodified client sources from `EquipmentBorrowing.Desktop/Api` are compiled into the test project
+  by linked includes (no Avalonia needed), so `E07` exercises the exact code the desktop uses.
+
+## What the test doubles can and cannot prove
+
+| Double | Proves | Does not prove |
+|---|---|---|
+| `ThrowingHandler`, `HangingHandler` | The desktop client reports "no HTTP response" as `Unreachable`, does not retry, and handles a timeout | Real network behaviour, or anything about the server |
+| `CountingHandler` | How many requests the client really sent (no automatic retry) | Nothing about the database |
+| `LoseResponseHandler` | The client warns "may or may not have been processed" while the data really is saved | Real network behaviour |
+
+All database claims (rollback, constraints, unknown outcome, persistence) use genuine PostgreSQL and fresh connections.
+`E07a` also uses a real closed port, so one "unreachable" check involves no double at all.
+
+## Manual checks
+
+`MA6-01` and `MA6-02` need a person, by design (the handout asks for no UI automation). The steps, the observations and the screenshot gallery are in
+`docs/lab6-manual-checks.md`. The helper `docs/acceptance/Start-SlowProxy.ps1` delays API responses so the loading state can be observed.
+
+## Defect found and fixed
+
+`D-1`: a `415 Unsupported Media Type` response used `application/problem+json` instead of the API's `{ code, message }` error body.
+Found by `TC6-E03`, fixed with one line in `Program.cs` (`SuppressMapClientErrors`), and retested: the failing test passes and the full suite is green.
+Details are in `docs/lab6-execution-and-defects.md`. No defect is unresolved.
+
+## Documented specification ambiguity
+
+The contract says a stable borrowing ID breaks date ties but not whether the tie-break follows the sort direction. The implementation orders
+ties by ID in the same direction as the date, and `TC6-U09` asserts exactly that rule. The specification was not changed.
+
+## Lab 6 documents and evidence
+
+- `docs/lab6-traceability.md`: baseline record, scenario index, UC to BR to API to TC6 matrix, API coverage.
+- `docs/lab6-execution-and-defects.md`: test execution record and the defect / regression record.
+- `docs/lab6-manual-checks.md`: `MA6-01` and `MA6-02` with observations and screenshots.
+- `docs/evidence/lab6/`: run summary and raw results (`test-run-2026-11-28.txt`, `lab6-final-trx.xml`), `D-1` evidence, dependency checks, OpenAPI capture and `screenshots/`.
+
+## Baseline and revision
+
+The Lab 5 baseline is the tag `lab5-submitted` (commit `a1ab4464575c39e72c2585494b979ba52c6c5d45`). The final Lab 6 revision is the tag `lab6-submitted`.
+
 # Earlier labs
 
 The sections below are the original Lab 1 to 3 documentation, kept as written. Where they mention SQLite, that was replaced by PostgreSQL in Lab 4 (see above).
