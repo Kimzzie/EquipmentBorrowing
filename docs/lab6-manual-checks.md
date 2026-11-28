@@ -2,7 +2,7 @@
 
 These two checks are done by hand on purpose (the handout asks for no UI automation). Everything that **can**
 be automated for them already is. The "Observed" cells below record what the student saw while running the steps
-(run on 2026-11-28 with screenshots). Cells still marked **(fill in)** have not been observed yet.
+(run on 2026-11-28 with screenshots). Every cell has been filled in from what was observed.
 
 Date run: **2026-11-28**   Computer: **ZIE** (Windows, PowerShell 7)   API commit: **ef5fa11** (the Stage 9 helper files were still uncommitted)
 Test database: `equipment_borrowing_test`   Fixed date D: `2026-11-10`
@@ -81,12 +81,12 @@ Invoke-RestMethod http://localhost:5080/api/v1/equipment
 | 1 | With only the API running, call `GET /api/v1/equipment` and `GET /openapi/v1.json`. | 200 with the seven items; the OpenAPI document downloads. | The desktop was not running. `GET /api/v1/equipment` returned the 7 items EQ-001 to EQ-007 with the expected availability (EQ-001, EQ-004, EQ-005 not available). `GET /openapi/v1.json` returned HTTP 200, 58630 bytes (the same size as the saved `openapi-v1.json`). |
 | 2 | Start the desktop (`$env:EQUIPMENT_BORROWING_API_URL = "http://localhost:5080"`) and open Students. Note ST-400's status. | Dani Ong is **Eligible**. | Students screen: Dani Ong (ST-400) was Eligible (Ada Cruz and Cara Lim Eligible, Ben Diaz Restricted). A `snapshot` taken at this point showed ST-400 `IsAllowedToBorrow = True`. |
 | 3 | From PowerShell: `Invoke-RestMethod -Method Patch -Uri http://localhost:5080/api/v1/students/<id of ST-400>/eligibility -ContentType application/json -Body '{"isEligible":false}'` | 200, `isEligible` false. | The response showed id 4, ST-400, Dani Ong, `isEligible : False`. (The same request was sent twice; the second was a harmless no-op.) |
-| 4 | In the desktop press Refresh (do not restart it). | Dani Ong now shows **Restricted**: the change came through the API. | After refreshing in the already-open desktop, Dani Ong shows **Restricted** in red. Refresh method used: **(fill in: Refresh button, or left the screen and came back)**. |
+| 4 | In the desktop press Refresh (do not restart it). | Dani Ong now shows **Restricted**: the change came through the API. | After refreshing in the already-open desktop, Dani Ong shows **Restricted** in red. Refresh method used: the **Refresh** button. |
 | 5 | Read the database independently (`docs/acceptance/snapshot.sql`). | `IsAllowedToBorrow = false` for ST-400: **one** persisted change, seen by both clients. | `snapshot` after the PATCH: ST-400 `IsAllowedToBorrow = False`. Everything else unchanged compared with the earlier snapshot: 4 students, 7 equipment rows with the same availability, 4 borrowings (ids 1 to 4), consistency check 0 rows. |
 | 6 | Run `.\docs\acceptance\Check-DesktopDependencies.ps1` and read sections 1 to 4. | No project references, no database packages or assemblies. | After `Unblock-File` (PowerShell blocked the downloaded script as unsigned): section 1 no project-to-project references; section 2 `none`; section 4 `none`. Section 3 listed 13 lines, all reviewed: the English word "select" in UI text and comments (for example "Please select a student.") and Avalonia's own `Application` class. None is database access. Section 5 shows `HttpClient` only in `Api/EquipmentApiClient.cs` and its registration in `App.axaml.cs`. |
 | 7 | (Extra, not in the original steps.) Reset the test data and refresh the open desktop. | Dani Ong is Eligible again: the desktop follows the database in both directions. | After `dotnet run --project tools\EquipmentBorrowing.TestData -- reset` and a refresh of the open desktop, Students shows Dani Ong (ST-400) **Eligible** again (Ben Diaz Restricted, as seeded). |
 
-**Result:** Pass. Step 4 still needs the refresh method written in.
+**Result:** Pass.
 **Evidence:** the MA6-02 screenshots (taken 17:32 to 17:42 on 2026-11-28) are in `docs/evidence/lab6/screenshots/` and listed in the gallery at the end of this file. Today's dependency-check output is saved as `docs/evidence/lab6/MA6-02-dependencies-2026-11-28.txt`.
 
 ---
