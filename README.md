@@ -4,11 +4,25 @@ A desktop application for laboratory staff to register students and equipment, i
 
 **Authors:** Kimberly Bautista, 2023303116
 
+## Contents
+
+This file is organised by lab. The Lab 4 sections hold the setup guide for the current system, and Labs 5 and 6 describe what changed on top of it.
+
+- [Laboratory Activity 6: automated verification and regression testing](#laboratory-activity-6-automated-verification-and-regression-testing): how to set up and run the tests, how they stay independent, and where the Lab 6 documents and evidence are.
+- [Laboratory Activity 5: API integration and acceptance testing](#laboratory-activity-5-api-integration-and-acceptance-testing): the REST API, how to run it, and the acceptance tests.
+- [Lab 4 summary and setup guide](#lab-4-summary): prerequisites, database, configuration, architecture (sections 1 to 8).
+- [Earlier labs (Labs 1 to 3)](#earlier-labs): the original write-ups, kept as written.
+
+**To run the system:** follow Lab 4 sections 1 to 5 (prerequisites, installation, database, configuration, migrations), then Lab 5 **Setup** and **Run** (start the API first, then the desktop).
+**To run the tests:** follow **Test setup** and **Run** in the Lab 6 section.
+
 ## Lab 4 summary
 
 Lab 4 moved the system from SQLite to PostgreSQL and added student and equipment management, atomic multi-item checkout, history views and borrowing search. Sections 1 to 8 below describe the current (Lab 4) system. The Lab 1 to 3 write-ups are preserved unchanged under **Earlier labs** at the end.
 
 > **Lab 5 update:** the desktop no longer touches the database. It talks to a new REST API (`src/EquipmentBorrowing.Api`) over HTTP, and the API is the only process that uses PostgreSQL. Sections 1 to 8 below describe the Lab 4 system; where Lab 5 changed how you run it (no migration or seeding at desktop startup, the API must be running first), read **Laboratory Activity 5** near the end of this file first.
+
+> **Lab 6 update:** the system is now covered by automated tests (xUnit against a real PostgreSQL test database) plus two manual acceptance checks. How to set them up and run them is in **Laboratory Activity 6**, and the traceability, execution and defect records are in `docs/lab6-*.md`.
 
 ## 1. Prerequisites
 
