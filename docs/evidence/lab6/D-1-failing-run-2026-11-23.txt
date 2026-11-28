@@ -1,0 +1,5 @@
+﻿D-1: failing run before the fix (2026-11-23), filtered from the original dotnet test output:
+
+Failed EquipmentBorrowing.Tests.EdgeCases.ProtocolErrorTests.E03_415_body_that_is_not_json [107 ms]
+Failed EquipmentBorrowing.Tests.UseCases.ProtocolTests.E03_A_body_that_is_not_JSON_is_a_415 [107 ms]
+Failed!  - Failed:     2, Passed:   220, Skipped:     0, Total:   222, Duration: 1 m 15 s - EquipmentBorrowing.Tests.dll (net10.0)
