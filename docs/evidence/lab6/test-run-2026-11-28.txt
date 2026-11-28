@@ -1,0 +1,44 @@
+﻿Lab 6 automated test run
+Date: 2026-11-28
+Command: dotnet test tests\EquipmentBorrowing.Tests --logger trx
+Commit: 9f7a434
+dotnet SDK: 10.0.404
+Database: equipment_borrowing_test (fixed date D = 2026-11-10)
+Raw per-test results: lab6-final-trx.xml (a .trx file saved with an .xml extension because .trx files are git-ignored)
+
+
+total=157 passed=157 failed=0 methodsWithTrait=91
+trx counters: total=157 executed=157 passed=157 failed=0
+
+results total=157  matched to a TC6 method=153  unmatched=4
+--- unmatched tests (should be the 4 smoke tests):
+InfrastructureSmokeTests.Real_http_pipeline_reads_the_same_database [Passed]
+InfrastructureSmokeTests.Reset_inserts_the_lab_dataset [Passed]
+InfrastructureSmokeTests.Ids_are_resolved_from_the_api [Passed]
+InfrastructureSmokeTests.Reset_is_repeatable [Passed]
+--- per TC6 id
+E01 | UniquenessTests.cs | methods=8 cases=23 passed=23 failed=0
+E02 | LimitTests.cs | methods=6 cases=6 passed=6 failed=0
+E03 | ProtocolTests.cs | methods=6 cases=34 passed=34 failed=0
+E04 | RollbackTests.cs | methods=4 cases=4 passed=4 failed=0
+E05 | StaleStateTests.cs | methods=6 cases=6 passed=6 failed=0
+E06 | ProtectedFieldTests.cs | methods=8 cases=10 passed=10 failed=0
+E07a | TransportTests.cs | methods=4 cases=4 passed=4 failed=0
+E07b | TransportTests.cs | methods=1 cases=1 passed=1 failed=0
+E07c | TransportTests.cs | methods=2 cases=2 passed=2 failed=0
+E08 | PersistenceTests.cs | methods=2 cases=2 passed=2 failed=0
+MA6-02 | DesktopBoundaryTests.cs,OpenApiContractTests.cs | methods=6 cases=6 passed=6 failed=0
+U01 | CatalogTests.cs | methods=2 cases=2 passed=2 failed=0
+U02 | CatalogTests.cs | methods=2 cases=2 passed=2 failed=0
+U03 | BorrowAndReturnTests.cs | methods=1 cases=1 passed=1 failed=0
+U04 | BorrowingSearchTests.cs | methods=1 cases=1 passed=1 failed=0
+U05 | BorrowAndReturnTests.cs | methods=3 cases=3 passed=3 failed=0
+U06 | CheckoutTests.cs | methods=2 cases=2 passed=2 failed=0
+U07 | HistoryTests.cs | methods=4 cases=4 passed=4 failed=0
+U08 | HistoryTests.cs | methods=4 cases=4 passed=4 failed=0
+U09 | BorrowingSearchTests.cs | methods=8 cases=24 passed=24 failed=0
+U12 | StudentManagementTests.cs | methods=2 cases=2 passed=2 failed=0
+U13 | StudentManagementTests.cs | methods=2 cases=2 passed=2 failed=0
+U14 | EligibilityTests.cs | methods=4 cases=4 passed=4 failed=0
+U15 | EquipmentManagementTests.cs | methods=2 cases=2 passed=2 failed=0
+U16 | EquipmentManagementTests.cs | methods=2 cases=2 passed=2 failed=0
