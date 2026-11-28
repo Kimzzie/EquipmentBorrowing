@@ -1,0 +1,32 @@
+﻿Checked: 2026-11-25T18:59:40.3933671+08:00
+
+== 1. Project references (expect: none) ==
+There are no Project to Project references in project src/EquipmentBorrowing.Desktop/EquipmentBorrowing.Desktop.csproj.
+
+== 2. Direct + transitive packages matching database libraries (expect: none) ==
+none
+
+== 3. Source files mentioning persistence terms (expect: none) ==
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\ViewModels\BorrowingsViewModel.cs:91: StatusMessage = "Please select a borrowing to return.";
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\ViewModels\EquipmentManagementViewModel.cs:170: // Select AFTER replacing the list. If the item is gone (or filtered out), this selects nothing.
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\ViewModels\EquipmentViewModel.cs:129: if (SelectedStudent is null) { Show("Please select a student.", isError: true); return; }
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\ViewModels\EquipmentViewModel.cs:130: if (SelectedEquipment is null) { Show("Please select equipment.", isError: true); return; }
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\ViewModels\EquipmentViewModel.cs:131: if (ExpectedReturnDate is null) { Show("Please select a return date.", isError: true); return; }
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\ViewModels\EquipmentViewModel.cs:183: if (SelectedStudent is null) { Show("Please select a student.", isError: true); return; }
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\ViewModels\EquipmentViewModel.cs:184: if (ExpectedReturnDate is null) { Show("Please select a return date.", isError: true); return; }
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\ViewModels\HistoryViewModel.cs:39: LoadStudentHistoryAsync, "Select a student to see their borrowing history.");
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\ViewModels\HistoryViewModel.cs:41: LoadEquipmentHistoryAsync, "Select an item to see its borrowing history.");
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\ViewModels\StudentsViewModel.cs:141: // Reload from the API and select the saved student, so the screen shows what is actually stored.
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\ViewModels\StudentsViewModel.cs:182: // Select AFTER replacing the list. If the student is gone, this selects nothing
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\App.axaml.cs:1: using Avalonia.Controls.ApplicationLifetimes;
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\App.axaml.cs:9: public partial class App : Avalonia.Application
+
+== 4. Built output containing database assemblies (expect: none) ==
+none
+
+== 5. HTTP usage (expect: HttpClient in Api/EquipmentApiClient.cs) ==
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\Api\EquipmentApiClient.cs:10
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\Api\EquipmentApiClient.cs:12
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\Api\EquipmentApiClient.cs:97
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\App.axaml.cs:30
+C:\Desk_App\EquipmentBorrowing\src\EquipmentBorrowing.Desktop\App.axaml.cs:31

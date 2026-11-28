@@ -1,0 +1,20 @@
+﻿# MA6-02: OpenAPI operations served by the running API (GET /openapi/v1.json)
+# Captured: 2026-11-25T18:59:43.8220394+08:00  |  columns: METHOD  ROUTE  PUBLISHED STATUS CODES
+
+openapi version: 3.1.1
+POST   /api/v1/borrowings                             201,400,404,409,500
+GET    /api/v1/borrowings                             200,400,500
+POST   /api/v1/borrowings/{id}/return                 200,400,404,409,500
+GET    /api/v1/borrowings/{id}                        200,400,404,500
+POST   /api/v1/checkout-requests                      201,400,404,409,500
+GET    /api/v1/equipment                              200,400,500
+POST   /api/v1/equipment                              201,400,409,500
+GET    /api/v1/equipment/{id}                         200,400,404,500
+PUT    /api/v1/equipment/{id}                         200,400,404,409,500
+GET    /api/v1/equipment/{id}/borrowings              200,400,404,500
+GET    /api/v1/students                               200,400,500
+POST   /api/v1/students                               201,400,409,500
+GET    /api/v1/students/{id}                          200,400,404,500
+PUT    /api/v1/students/{id}                          200,400,404,409,500
+PATCH  /api/v1/students/{id}/eligibility              200,400,404,500
+GET    /api/v1/students/{id}/borrowings               200,400,404,500
